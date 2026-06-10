@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0F1F3D" />
+  <title>FoyerSécure</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { font-family: -apple-system, 'Inter', system-ui, sans-serif; background: #F0F2F7; }
+    input, select, textarea, button { font-family: inherit; }
+    ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+
+const { useState } = React;
+
+const COMPTES = [
+  {
+    id: "foyer-1", email: "oliviers@foyersecure.fr", motDePasse: "demo1234",
+    nom: "Foyer Les Oliviers", ville: "Toulouse", capacite: 12, role: "admin",
+    contacts: {
+      ase: { nom: "Mme Dupont – ASE Haute-Garonne", email: "ase31@haute-garonne.fr", tel: "0561991234" },
+      astreinte: { nom: "Éducateur de nuit", email: "astreinte@lesoliviers.fr", tel: "0612345678" },
+      police: { nom: "Commissariat Toulouse Centre", email: "toulouse@police.fr", tel: "17" },
+    },
+    jeunes: [
+      { id: 1, nom: "Martin", prenom: "Lucas", age: 15, chambre: "12A", dateEntree: "2024-09-01", parentEmail: "parents.martin@email.fr", parentTel: "0687654321" },
+      { id: 2, nom: "Dubois", prenom: "Camille", age: 16, chambre: "08B", dateEntree: "2024-11-15", parentEmail: "dubois.famille@email.fr", parentTel: "0698765432" },
+      { id: 3, nom: "Bernard", prenom: "Noah", age: 14, chambre: "05C", dateEntree: "2025-01-10", parentEmail: "bernard.contact@email.fr", parentTel: "0611223344" },
+      { id: 4, nom: "Petit", prenom: "Inès", age: 17, chambre: "14A", dateEntree: "2024-07-22", parentEmail: "petit.famille@email.fr", parentTel: "0622334455" },
+    ],
+    fugues: [
+      { id: 1, jeuneId: 1, dateDepart: "2025-03-10T22:30", dateRetour: "2025-03-11T14:00", motif: "Conflit avec éducateur", lieu: "Domicile familial", signalementPolicier: true, statut: "cloturee", notes: "Retour volontaire après médiation téléphonique.", notifications: [] },
+      { id: 2, jeuneId: 1, dateDepart: "2025-04-22T20:00", dateRetour: "2025-04-23T09:30", motif: "Inconnu", lieu: "Non identifié", signalementPolicier: true, statut: "cloturee", notes: "Retrouvé par la police.", notifications: [] },
+      { id: 3, jeuneId: 2, dateDepart: "2025-05-01T18:00", dateRetour: "2025-05-01T23:45", motif: "Tension avec pair", lieu: "Quartier centre-ville", signalementPolicier: false, statut: "cloturee", notes: "Retour spontané.", notifications: [] },
+      { id: 4, jeuneId: 3, dateDepart: "2025-05-20T21:00", dateRetour: null, motif: "Inconnu", lieu: "Non identifié", signalementPolicier: true, statut: "en_cours", notes: "", notifications: [{ dest: "ASE", type: "SMS", heure: "21:02", statut: "envoyé" }, { dest: "Police", type: "Email", heure: "21:02", statut: "envoyé" }] },
+      { id: 5, jeuneId: 4, dateDepart: "2025-02-14T19:00", dateRetour: "2025-02-15T08:00", motif: "Visite non autorisée", lieu: "Chez un ami", signalementPolicier: false, statut: "cloturee", notes: "Connaissance du lieu.", notifications: [] },
+    ],
+  },
+  {
+    id: "foyer-2", email: "horizon@foyersecure.fr", motDePasse: "demo5678",
+    nom: "Foyer Horizon", ville: "Bordeaux", capacite: 8, role: "educateur",
+    contacts: {
+      ase: { nom: "M. Lefebvre – ASE Gironde", email: "ase33@gironde.fr", tel: "0556123456" },
+      astreinte: { nom: "Éducateur de nuit", email: "astreinte@horizon.fr", tel: "0623456789" },
+      police: { nom: "Commissariat Bordeaux", email: "bordeaux@police.fr", tel: "17" },
+    },
+    jeunes: [
+      { id: 10, nom: "Moreau", prenom: "Théo", age: 15, chambre: "A1", dateEntree: "2025-01-05", parentEmail: "moreau.parents@email.fr", parentTel: "0633445566" },
+      { id: 11, nom: "Leroy", prenom: "Jade", age: 16, chambre: "B2", dateEntree: "2024-12-01", parentEmail: "leroy.famille@email.fr", parentTel: "0644556677" },
+    ],
+    fugues: [
+      { id: 10, jeuneId: 10, dateDepart: "2025-04-05T20:00", dateRetour: "2025-04-06T07:30", motif: "Fugue amoureuse", lieu: "Chez un ami", signalementPolicier: false, statut: "cloturee", notes: "Retour après appel des parents.", notifications: [] },
+      { id: 11, jeuneId: 11, dateDepart: "2025-05-25T19:30", dateRetour: null, motif: "Tension avec pair", lieu: "Non identifié", signalementPolicier: true, statut: "en_cours", notes: "", notifications: [] },
+    ],
+  },
+];
+
+const MOTIFS = ["Conflit avec éducateur", "Tension avec pair", "Visite non autorisée", "Fugue amoureuse", "Inconnu", "Autre"];
+const LIEUX = ["Domicile familial", "Chez un ami", "Quartier centre-ville", "Non identifié", "Autre"];
+
+function dureeH(dep, ret) {
+  if (!ret) return null;
+  const d = new Date(ret) - new Date(dep);
+  const h = Math.floor(d / 3600000), m = Math.floor((d % 3600000) / 60000);
+  return h > 0 ? `${h}h${m > 0 ? m + "min" : ""}` : `${m}min`;
+}
+function fDate(dt) {
+  if (!dt) return "—";
+  return new Date(dt).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+function fDateShort(dt) {
+  if (!dt) return "—";
+  return new Date(dt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+}
+function nowISO() { return new Date().toISOString().slice(0, 16); }
+
+const C = {
+  navy: "#0F1F3D", navyLight: "#1a3a6b", red: "#E63946", green: "#2DC653",
+  amber: "#F59E0B", blue: "#3B82F6", purple: "#7C3AED",
+  bg: "#F0F2F7", white: "#fff", gray50: "#F8F9FB", gray100: "#F0F2F7",
+  gray200: "#E5E7EB", gray400: "#9CA3AF", gray600: "#6B7280", gray700: "#374151", gray900: "#1A1F36",
+};
+
+const S = {
+  app: { fontFamily: "-apple-system,'Inter',system-ui,sans-serif", background: C.bg, minHeight: "100vh", color: C.gray900 },
+  sidebar: { position: "fixed", left: 0, top: 0, bottom: 0, width: 220, background: C.navy, display: "flex", flexDirection: "column", zIndex: 100, overflowY: "auto" },
+  main: { marginLeft: 220, padding: "24px 28px", minHeight: "100vh" },
+  pageHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 },
+  pageTitle: { fontSize: 20, fontWeight: 700, color: C.navy, margin: 0 },
+  sidebarLogo: { padding: "20px 18px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)" },
+  sidebarBrand: { fontSize: 10, color: "rgba(255,255,255,0.35)", fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 5 },
+  sidebarFoyer: { color: "#fff", fontSize: 13.5, fontWeight: 700, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  sidebarVille: { color: "rgba(255,255,255,0.4)", fontSize: 11, margin: "3px 0 0" },
+  nav: { padding: "12px 10px", flex: 1 },
+  navLabel: { color: "rgba(255,255,255,0.28)", fontSize: 9.5, fontWeight: 700, letterSpacing: 1.2, padding: "0 8px", marginBottom: 4, marginTop: 12, textTransform: "uppercase" },
+  navItem: (a) => ({ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", borderRadius: 8, cursor: "pointer", color: a ? "#fff" : "rgba(255,255,255,0.55)", background: a ? "rgba(255,255,255,0.1)" : "transparent", fontSize: 13, fontWeight: a ? 600 : 400, marginBottom: 2, border: "none", width: "100%", textAlign: "left" }),
+  navBadge: (c) => ({ background: c, color: "#fff", borderRadius: 10, fontSize: 10.5, fontWeight: 700, padding: "1px 6px", marginLeft: "auto" }),
+  card: { background: C.white, borderRadius: 12, padding: "18px 22px", boxShadow: "0 1px 4px rgba(15,31,61,0.07)" },
+  kpi: (a) => ({ background: C.white, borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 4px rgba(15,31,61,0.07)", borderLeft: `4px solid ${a}` }),
+  kpiVal: { fontSize: 30, fontWeight: 800, lineHeight: 1, marginBottom: 4 },
+  kpiLabel: { fontSize: 11.5, color: C.gray600, fontWeight: 500 },
+  grid4: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 22 },
+  grid3: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 22 },
+  grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 22 },
+  table: { width: "100%", borderCollapse: "collapse" },
+  th: { textAlign: "left", padding: "9px 13px", fontSize: 11, fontWeight: 700, color: C.gray600, textTransform: "uppercase", letterSpacing: 0.5, borderBottom: `2px solid ${C.gray100}` },
+  td: { padding: "11px 13px", fontSize: 13, borderBottom: `1px solid ${C.gray100}`, verticalAlign: "middle" },
+  statusBadge: (s) => {
+    const m = { en_cours: { bg: "#FEF3C7", c: "#D97706" }, cloturee: { bg: "#D1FAE5", c: "#059669" }, "envoyé": { bg: "#D1FAE5", c: "#059669" }, echec: { bg: "#FEE2E2", c: "#DC2626" } };
+    const x = m[s] || { bg: "#F3F4F6", c: "#6B7280" };
+    return { background: x.bg, color: x.c, borderRadius: 20, fontSize: 11, fontWeight: 700, padding: "3px 9px", whiteSpace: "nowrap" };
+  },
+  roleBadge: (r) => ({ background: r === "admin" ? "#EDE9FE" : "#DBEAFE", color: r === "admin" ? C.purple : C.blue, borderRadius: 6, fontSize: 10.5, fontWeight: 700, padding: "2px 7px" }),
+  btn: (v) => {
+    const b = { padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" };
+    if (v === "primary") return { ...b, background: C.navy, color: "#fff" };
+    if (v === "danger")  return { ...b, background: C.red, color: "#fff" };
+    if (v === "success") return { ...b, background: C.green, color: "#fff", fontSize: 12, padding: "6px 12px" };
+    if (v === "ghost")   return { ...b, background: "transparent", color: C.navy, border: "1.5px solid #D0D5E8" };
+    if (v === "logout")  return { ...b, background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.6)", fontSize: 12, padding: "7px 12px", width: "100%", justifyContent: "center" };
+    if (v === "notif")   return { ...b, background: "#FFF7ED", color: "#C2410C", border: "1px solid #FED7AA", fontSize: 11.5, padding: "5px 10px" };
+    return b;
+  },
+  formGroup: { marginBottom: 15 },
+  label: { display: "block", fontSize: 12, fontWeight: 600, color: C.gray700, marginBottom: 5 },
+  input: { width: "100%", border: "1.5px solid #D1D5DB", borderRadius: 8, padding: "9px 11px", fontSize: 13.5, outline: "none", boxSizing: "border-box", color: C.gray900 },
+  select: { width: "100%", border: "1.5px solid #D1D5DB", borderRadius: 8, padding: "9px 11px", fontSize: 13.5, outline: "none", boxSizing: "border-box", background: C.white },
+  checkRow: { display: "flex", alignItems: "center", gap: 9, cursor: "pointer", fontSize: 13.5 },
+  modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: "16px" },
+  modalBox: { background: C.white, borderRadius: 14, padding: "24px 28px", width: "100%", maxWidth: 500, boxShadow: "0 8px 40px rgba(0,0,0,0.2)", maxHeight: "90vh", overflowY: "auto" },
+  modalTitle: { fontSize: 17, fontWeight: 700, marginBottom: 18, color: C.navy },
+  modalFooter: { display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" },
+  alertBanner: { background: "#FFF3CD", border: "1px solid #FFC107", borderRadius: 10, padding: "11px 16px", marginBottom: 13, display: "flex", alignItems: "center", gap: 11, fontSize: 13 },
+  notifChip: (ok) => ({ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600, padding: "2px 7px", borderRadius: 10, background: ok ? "#D1FAE5" : "#FEE2E2", color: ok ? "#059669" : "#DC2626", marginRight: 4 }),
+  timeline: { position: "relative", paddingLeft: 26 },
+  timelineItem: { position: "relative", paddingBottom: 20 },
+  timelineDot: (c) => ({ position: "absolute", left: -32, top: 4, width: 11, height: 11, borderRadius: "50%", background: c, border: "2px solid #fff", boxShadow: `0 0 0 2px ${c}` }),
+  timelineLine: { position: "absolute", left: -27, top: 15, bottom: 0, width: 2, background: C.gray200 },
+  loginWrap: { minHeight: "100vh", display: "flex", background: `linear-gradient(135deg, ${C.navy} 0%, ${C.navyLight} 100%)` },
+  loginLeft: { flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "50px 60px" },
+  loginRight: { width: 440, background: C.white, display: "flex", flexDirection: "column", justifyContent: "center", padding: "50px 44px", overflowY: "auto" },
+  pricingCard: (h) => ({ background: h ? C.navy : C.white, borderRadius: 14, padding: "26px 26px 30px", boxShadow: h ? "0 4px 24px rgba(15,31,61,0.25)" : "0 1px 6px rgba(15,31,61,0.08)", border: h ? "none" : `1.5px solid ${C.gray200}`, color: h ? "#fff" : C.gray900, position: "relative" }),
+};
+
+// ── PAGE ABONNEMENT ──────────────────────────────────────────────────
+function PageAbonnement({ onRetour }) {
+  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [formAbo, setFormAbo] = useState({ nom: "", email: "", foyer: "", tel: "" });
+  const [submitted, setSubmitted] = useState(false);
+
+  const plans = [
+    { id: "starter", nom: "Starter", prix: 160, desc: "Petits établissements", highlight: false,
+      features: ["Jusqu'à 10 jeunes", "Signalement illimité", "Notifications Email", "Tableau de bord", "1 compte", "Support email"] },
+    { id: "pro", nom: "Pro", prix: 220, desc: "La solution complète", highlight: true, badge: "⭐ Populaire",
+      features: ["Jusqu'à 30 jeunes", "SMS + Email automatiques", "5 comptes utilisateurs", "Historique illimité", "Export PDF", "Support 7j/7"] },
+    { id: "multi", nom: "Multi-site", prix: 380, desc: "Associations multi-établissements", highlight: false,
+      features: ["Jeunes illimités", "Établissements illimités", "SMS + Email + Appel auto", "Dashboard centralisé", "API & intégrations", "Account manager dédié"] },
+  ];
+
+  if (submitted) return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ ...S.card, textAlign: "center", maxWidth: 420, padding: "44px 36px" }}>
+        <div style={{ fontSize: 50, marginBottom: 14 }}>✅</div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: C.navy, marginBottom: 10 }}>Demande envoyée !</div>
+        <div style={{ fontSize: 13.5, color: C.gray600, marginBottom: 22, lineHeight: 1.7 }}>Votre essai gratuit de <strong>14 jours</strong> démarre dès validation.<br />Identifiants reçus sous <strong>24h</strong>.</div>
+        <button style={S.btn("primary")} onClick={onRetour}>← Retour connexion</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "-apple-system,'Inter',system-ui,sans-serif" }}>
+      <div style={{ background: C.navy, padding: "13px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ color: "#fff", fontWeight: 800, fontSize: 15 }}>🔒 FoyerSécure</span>
+        <button style={{ ...S.btn("ghost"), color: "#fff", border: "1.5px solid rgba(255,255,255,0.3)", fontSize: 12 }} onClick={onRetour}>← Connexion</button>
+      </div>
+      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "40px 20px" }}>
+        <div style={{ background: `linear-gradient(135deg, ${C.navy} 0%, ${C.navyLight} 100%)`, borderRadius: 14, padding: "36px 40px", marginBottom: 28, color: "#fff", textAlign: "center" }}>
+          <h1 style={{ fontSize: 30, fontWeight: 900, margin: "0 0 10px" }}>Simple, transparent, sans engagement</h1>
+          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.6)", marginBottom: 16 }}>Toutes les formules incluent 14 jours d'essai gratuit, sans carte bancaire.</p>
+          <div style={{ display: "inline-flex", gap: 8, background: "rgba(255,255,255,0.1)", borderRadius: 30, padding: "7px 16px", fontSize: 13 }}>
+            ✅ Sans engagement · Données hébergées en France · Conformité RGPD
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 18, marginBottom: 32 }}>
+          {plans.map(plan => (
+            <div key={plan.id} style={S.pricingCard(plan.highlight)}>
+              {plan.badge && <div style={{ position: "absolute", top: -11, left: "50%", transform: "translateX(-50%)", background: C.amber, color: "#fff", borderRadius: 20, fontSize: 11, fontWeight: 700, padding: "2px 12px", whiteSpace: "nowrap" }}>{plan.badge}</div>}
+              <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: plan.highlight ? "rgba(255,255,255,0.4)" : C.gray400, marginBottom: 5 }}>{plan.nom}</div>
+              <div style={{ fontSize: 36, fontWeight: 900, color: plan.highlight ? "#fff" : C.navy, lineHeight: 1, marginBottom: 4 }}>{plan.prix}€<span style={{ fontSize: 14, fontWeight: 500, opacity: 0.6 }}>/mois</span></div>
+              <div style={{ fontSize: 12, color: plan.highlight ? "rgba(255,255,255,0.5)" : C.gray400, marginBottom: 16, marginTop: 3 }}>{plan.desc}</div>
+              <div style={{ background: plan.highlight ? "rgba(255,255,255,0.1)" : "#F0FDF4", borderRadius: 7, padding: "7px 11px", marginBottom: 16, fontSize: 12, color: plan.highlight ? "#6EE7B7" : "#059669", fontWeight: 600 }}>🎁 14 jours gratuits — sans CB</div>
+              {plan.features.map(f => (
+                <div key={f} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: plan.highlight ? "rgba(255,255,255,0.85)" : C.gray700, marginBottom: 8 }}>
+                  <span style={{ color: plan.highlight ? "#6EE7B7" : C.green, flexShrink: 0 }}>✓</span><span>{f}</span>
+                </div>
+              ))}
+              <button style={{ ...S.btn("primary"), width: "100%", justifyContent: "center", marginTop: 18, background: plan.highlight ? C.red : C.navy }} onClick={() => setSelectedPlan(plan)}>
+                Démarrer l'essai gratuit
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+      {selectedPlan && (
+        <div style={S.modalOverlay} onClick={() => setSelectedPlan(null)}>
+          <div style={S.modalBox} onClick={e => e.stopPropagation()}>
+            <h2 style={S.modalTitle}>🎁 Essai gratuit 14 jours — {selectedPlan.nom}</h2>
+            <p style={{ fontSize: 13, color: C.gray600, marginBottom: 18 }}>Formule {selectedPlan.prix}€/mois après l'essai · Sans engagement · Sans CB</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 11 }}>
+              <div style={S.formGroup}><label style={S.label}>Nom responsable *</label><input style={S.input} value={formAbo.nom} onChange={e => setFormAbo({ ...formAbo, nom: e.target.value })} placeholder="Prénom Nom" /></div>
+              <div style={S.formGroup}><label style={S.label}>Email *</label><input style={S.input} type="email" value={formAbo.email} onChange={e => setFormAbo({ ...formAbo, email: e.target.value })} placeholder="email@foyer.fr" /></div>
+              <div style={S.formGroup}><label style={S.label}>Établissement *</label><input style={S.input} value={formAbo.foyer} onChange={e => setFormAbo({ ...formAbo, foyer: e.target.value })} placeholder="Foyer / MECS…" /></div>
+              <div style={S.formGroup}><label style={S.label}>Téléphone</label><input style={S.input} value={formAbo.tel} onChange={e => setFormAbo({ ...formAbo, tel: e.target.value })} placeholder="06 XX XX XX XX" /></div>
+            </div>
+            <div style={{ background: "#F0FDF4", borderRadius: 8, padding: "9px 13px", fontSize: 12.5, color: "#059669", marginBottom: 4 }}>✅ Identifiants envoyés sous 24h. Aucune CB requise.</div>
+            <div style={S.modalFooter}>
+              <button style={S.btn("ghost")} onClick={() => setSelectedPlan(null)}>Annuler</button>
+              <button style={S.btn("primary")} onClick={() => { if (formAbo.nom && formAbo.email && formAbo.foyer) { setSelectedPlan(null); setSubmitted(true); } }}>Démarrer →</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── LOGIN ────────────────────────────────────────────────────────────
+function LoginScreen({ onLogin, onAbonnement }) {
+  const [email, setEmail] = useState("");
+  const [mdp, setMdp] = useState("");
+  const [erreur, setErreur] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  function connexion() {
+    if (!email || !mdp) { setErreur("Veuillez remplir tous les champs."); return; }
+    setLoading(true);
+    setTimeout(() => {
+      const c = COMPTES.find(c => c.email.toLowerCase() === email.toLowerCase() && c.motDePasse === mdp);
+      if (c) { setErreur(""); onLogin(c); } else setErreur("Email ou mot de passe incorrect.");
+      setLoading(false);
+    }, 600);
+  }
+
+  return (
+    <div style={S.loginWrap}>
+      <div style={S.loginLeft}>
+        <div style={{ color: "#fff", fontSize: 26, fontWeight: 800, marginBottom: 8 }}>🔒 FoyerSécure</div>
+        <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 14.5, lineHeight: 1.7, maxWidth: 360, marginBottom: 36 }}>La plateforme de gestion des fugues pour le secteur social et médico-social.</div>
+        {[["🚨","Signalement en 30 secondes","Fugue déclarée, contacts alertés automatiquement"],["📊","Tableau de bord temps réel","Situations actives visibles d'un coup d'œil"],["📱","SMS + Email automatiques","ASE, parents, astreinte et police notifiés"],["🏢","Multi-établissement","Chaque foyer a son espace sécurisé"]].map(([i,t,d]) => (
+          <div key={t} style={{ display:"flex", alignItems:"center", gap:12, color:"rgba(255,255,255,0.8)", fontSize:13.5, marginBottom:14 }}>
+            <div style={{ width:34, height:34, borderRadius:9, background:"rgba(255,255,255,0.12)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0 }}>{i}</div>
+            <div><div style={{ fontWeight:600, marginBottom:1 }}>{t}</div><div style={{ fontSize:12, opacity:0.7 }}>{d}</div></div>
+          </div>
+        ))}
+        <button style={{ ...S.btn("ghost"), color:"rgba(255,255,255,0.7)", border:"1.5px solid rgba(255,255,255,0.25)", marginTop:18, fontSize:12.5 }} onClick={onAbonnement}>Voir les tarifs & essai gratuit →</button>
+      </div>
+      <div style={S.loginRight}>
+        <div style={{ fontSize:21, fontWeight:800, color:C.navy, marginBottom:5 }}>Connexion</div>
+        <div style={{ fontSize:13, color:C.gray600, marginBottom:26 }}>Accédez à l'espace de votre établissement</div>
+        {erreur && <div style={{ background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:8, padding:"9px 13px", color:"#DC2626", fontSize:12.5, marginBottom:14 }}>⚠️ {erreur}</div>}
+        <div style={S.formGroup}><label style={S.label}>Email</label><input style={S.input} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="votre@email.fr" onKeyDown={e => e.key==="Enter" && connexion()} /></div>
+        <div style={S.formGroup}><label style={S.label}>Mot de passe</label><input style={S.input} type="password" value={mdp} onChange={e => setMdp(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key==="Enter" && connexion()} /></div>
+        <button style={{ ...S.btn("primary"), width:"100%", justifyContent:"center", padding:"11px", fontSize:14 }} onClick={connexion} disabled={loading}>{loading ? "Connexion…" : "Se connecter →"}</button>
+        <div style={{ marginTop:18, textAlign:"center" }}>
+          <span style={{ fontSize:12.5, color:C.gray600 }}>Pas abonné ? </span>
+          <button style={{ background:"none", border:"none", color:C.navy, fontWeight:700, fontSize:12.5, cursor:"pointer", textDecoration:"underline" }} onClick={onAbonnement}>Essai 14 jours gratuit</button>
+        </div>
+        <div style={{ marginTop:22, background:C.gray100, borderRadius:9, padding:"13px 14px" }}>
+          <div style={{ fontSize:10.5, fontWeight:700, color:C.gray700, marginBottom:9, textTransform:"uppercase", letterSpacing:0.5 }}>Comptes démo</div>
+          {COMPTES.map(c => (
+            <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderBottom:`1px solid ${C.gray200}`, cursor:"pointer" }} onClick={() => { setEmail(c.email); setMdp(c.motDePasse); setErreur(""); }}>
+              <div><div style={{ fontSize:12.5, fontWeight:600, color:C.gray700 }}>{c.nom}</div><div style={{ fontSize:11, color:C.gray400 }}>{c.email}</div></div>
+              <div style={{ display:"flex", gap:5, alignItems:"center" }}>
+                <span style={S.roleBadge(c.role)}>{c.role}</span>
+                <span style={{ fontSize:11, color:C.gray400, fontFamily:"monospace" }}>{c.motDePasse}</span>
+              </div>
+            </div>
+          ))}
+          <div style={{ fontSize:11, color:C.gray400, marginTop:7 }}>Cliquez pour remplir automatiquement</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── NOTIF PANEL ──────────────────────────────────────────────────────
+function NotifPanel({ fugue, jeune, contacts, onClose }) {
+  const [sent, setSent] = useState(fugue.notifications || []);
+  const [sending, setSending] = useState(false);
+  const destinataires = [
+    { key: "ase", label: "ASE", icon: "🏛", info: contacts.ase },
+    { key: "parents", label: "Parents", icon: "👨‍👩‍👦", info: { nom: `Famille ${jeune.nom}`, email: jeune.parentEmail, tel: jeune.parentTel } },
+    { key: "astreinte", label: "Astreinte", icon: "🌙", info: contacts.astreinte },
+    { key: "police", label: "Police", icon: "🚔", info: contacts.police },
+  ];
+  function sendAll() {
+    setSending(true);
+    setTimeout(() => {
+      const h = new Date().toLocaleTimeString("fr-FR", { hour:"2-digit", minute:"2-digit" });
+      setSent(destinataires.flatMap(d => [{ dest:d.label, type:"SMS", heure:h, statut:"envoyé" },{ dest:d.label, type:"Email", heure:h, statut:"envoyé" }]));
+      setSending(false);
+    }, 1400);
+  }
+  function sendOne(dest, type) {
+    setSending(true);
+    setTimeout(() => {
+      const h = new Date().toLocaleTimeString("fr-FR", { hour:"2-digit", minute:"2-digit" });
+      setSent(prev => [...prev, { dest, type, heure:h, statut:"envoyé" }]);
+      setSending(false);
+    }, 800);
+  }
+  const isSent = (dest, type) => sent.some(n => n.dest===dest && n.type===type);
+  return (
+    <div style={S.modalOverlay} onClick={onClose}>
+      <div style={{ ...S.modalBox, maxWidth:560 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:5 }}>
+          <h2 style={{ ...S.modalTitle, marginBottom:0 }}>📣 Notifications — {jeune.prenom} {jeune.nom}</h2>
+          <button onClick={onClose} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:C.gray400 }}>✕</button>
+        </div>
+        <p style={{ fontSize:12.5, color:C.gray600, marginBottom:18 }}>Départ {fDate(fugue.dateDepart)} · {fugue.lieu}</p>
+        {sent.length === 0
+          ? <div style={{ background:"#FFF7ED", border:"1px solid #FED7AA", borderRadius:9, padding:"11px 14px", marginBottom:16, fontSize:13, color:"#C2410C" }}>⚠️ Aucune notification envoyée pour cette fugue.</div>
+          : <div style={{ background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:9, padding:"9px 13px", marginBottom:16, fontSize:12.5, color:"#059669", fontWeight:600 }}>✅ {sent.length} notification{sent.length>1?"s":""} envoyée{sent.length>1?"s":""}</div>
+        }
+        <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:13 }}>
+          <button style={S.btn("danger")} onClick={sendAll} disabled={sending}>{sending ? "Envoi…" : "📣 Alerter tous (SMS + Email)"}</button>
+        </div>
+        {destinataires.map(d => (
+          <div key={d.key} style={{ background:C.gray50, borderRadius:10, padding:"13px 15px", border:`1px solid ${C.gray200}`, marginBottom:10 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:7 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:9 }}>
+                <span style={{ fontSize:18 }}>{d.icon}</span>
+                <div><div style={{ fontWeight:700, fontSize:13.5 }}>{d.label}</div><div style={{ fontSize:11.5, color:C.gray600 }}>{d.info.nom}</div></div>
+              </div>
+              <div style={{ display:"flex", gap:5 }}>
+                {["SMS","Email"].map(type => isSent(d.label,type)
+                  ? <span key={type} style={S.notifChip(true)}>✓ {type}</span>
+                  : <button key={type} style={S.btn("notif")} onClick={() => sendOne(d.label,type)} disabled={sending}>{type==="SMS"?"📱":"✉️"} {type}</button>
+                )}
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:14, fontSize:11.5, color:C.gray600 }}>
+              <span>📱 {d.info.tel}</span><span>✉️ {d.info.email}</span>
+            </div>
+          </div>
+        ))}
+        <div style={{ marginTop:18, background:C.gray50, borderRadius:9, padding:"11px 13px" }}>
+          <div style={{ fontSize:11.5, fontWeight:700, color:C.gray700, marginBottom:7 }}>Message envoyé automatiquement</div>
+          <div style={{ fontSize:12, color:C.gray600, fontStyle:"italic", lineHeight:1.6, background:C.white, borderRadius:7, padding:"9px 11px", border:`1px solid ${C.gray200}` }}>
+            🚨 ALERTE FUGUE — {jeune.prenom} {jeune.nom} ({jeune.age} ans, ch. {jeune.chambre})<br/>
+            Date : {fDate(fugue.dateDepart)} · Lieu probable : {fugue.lieu} · Motif : {fugue.motif}<br/>
+            Merci de nous contacter immédiatement.
+          </div>
+        </div>
+        <div style={S.modalFooter}><button style={S.btn("ghost")} onClick={onClose}>Fermer</button></div>
+      </div>
+    </div>
+  );
+}
+
+// ── APP PRINCIPALE ───────────────────────────────────────────────────
+function App() {
+  const [appPage, setAppPage] = useState("login");
+  const [session, setSession] = useState(null);
+  const [data, setData] = useState({});
+  const [page, setPage] = useState("dashboard");
+  const [selectedJeune, setSelectedJeune] = useState(null);
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const [alertDismissed, setAlertDismissed] = useState([]);
+  const [notifFugue, setNotifFugue] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  function showToast(msg, color=C.green) { setToast({msg,color}); setTimeout(()=>setToast(null),3000); }
+
+  function login(compte) {
+    setSession(compte);
+    setData(prev => ({ ...prev, [compte.id]: { jeunes: compte.jeunes, fugues: compte.fugues } }));
+    setPage("dashboard"); setAlertDismissed([]); setAppPage("app");
+  }
+
+  if (appPage==="abonnement") return React.createElement(PageAbonnement, { onRetour:()=>setAppPage("login") });
+  if (appPage==="login") return React.createElement(LoginScreen, { onLogin:login, onAbonnement:()=>setAppPage("abonnement") });
+
+  const fid = session.id;
+  const jeunes = data[fid]?.jeunes || [];
+  const fugues = data[fid]?.fugues || [];
+  const contacts = session.contacts;
+
+  function setJeunes(fn) { setData(p=>({...p,[fid]:{...p[fid],jeunes:typeof fn==="function"?fn(p[fid].jeunes):fn}})); }
+  function setFugues(fn) { setData(p=>({...p,[fid]:{...p[fid],fugues:typeof fn==="function"?fn(p[fid].fugues):fn}})); }
+
+  const fuguesEnCours = fugues.filter(f=>f.statut==="en_cours");
+  const retoursSous24h = fugues.filter(f=>f.statut==="cloturee"&&f.dateRetour&&(new Date(f.dateRetour)-new Date(f.dateDepart))<86400000).length;
+  const jeunesFugIds = [...new Set(fugues.map(f=>f.jeuneId))];
+  const jeunesSansFugue = jeunes.filter(j=>!jeunesFugIds.includes(j.id)).length;
+
+  function getJeune(id) { return jeunes.find(j=>j.id===id); }
+  function getFuguesJeune(id) { return fugues.filter(f=>f.jeuneId===id).sort((a,b)=>new Date(b.dateDepart)-new Date(a.dateDepart)); }
+  function openModal(type,data={}) { setForm(data); setModal({type}); }
+  function closeModal() { setModal(null); setForm({}); }
+
+  function enregistrerFugue() {
+    if (!form.jeuneId) return;
+    const j = getJeune(parseInt(form.jeuneId));
+    const newF = { id:Date.now(), jeuneId:parseInt(form.jeuneId), dateDepart:form.dateDepart, dateRetour:null, motif:form.motif||"Inconnu", lieu:form.lieu||"Non identifié", signalementPolicier:!!form.signalementPolicier, statut:"en_cours", notes:form.notes||"", notifications:[] };
+    setFugues(prev=>[...prev,newF]); closeModal();
+    showToast(`Fugue de ${j?.prenom} ${j?.nom} enregistrée`, C.red);
+    if (form.notifASE||form.notifParents||form.notifAstreinte||form.notifPolice) setTimeout(()=>setNotifFugue(newF),600);
+  }
+  function enregistrerRetour() {
+    const f = fugues.find(f=>f.id===modal.fugueId);
+    const j = getJeune(f?.jeuneId);
+    setFugues(prev=>prev.map(f=>f.id===modal.fugueId?{...f,dateRetour:form.dateRetour,statut:"cloturee",notes:form.notes}:f));
+    closeModal(); showToast(`Retour de ${j?.prenom||""} ${j?.nom||""} enregistré`);
+  }
+  function enregistrerJeune() {
+    if (!form.nom||!form.prenom) return;
+    setJeunes(prev=>[...prev,{id:Date.now(),nom:form.nom,prenom:form.prenom,age:parseInt(form.age)||0,chambre:form.chambre||"",dateEntree:form.dateEntree||nowISO().slice(0,10),parentEmail:form.parentEmail||"",parentTel:form.parentTel||""}]);
+    closeModal(); showToast(`${form.prenom} ${form.nom} ajouté(e)`);
+  }
+
+  const navItems = [
+    { key:"dashboard", label:"Tableau de bord", icon:"📊", badge:fuguesEnCours.length||null, bc:C.red },
+    { key:"signaler", label:"Signaler une fugue", icon:"🚨", highlight:true },
+    { key:"jeunes", label:"Suivi par jeune", icon:"👥" },
+    { key:"stats", label:"Statistiques", icon:"📈" },
+    { key:"notifications", label:"Notifications", icon:"📣" },
+  ];
+
+  // ── DASHBOARD ──
+  const Dashboard = () => {
+    const motifStats = MOTIFS.map(m=>({m,n:fugues.filter(f=>f.motif===m).length})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n);
+    return (
+      <div>
+        {fuguesEnCours.filter(f=>!alertDismissed.includes(f.id)).map(f=>{
+          const j=getJeune(f.jeuneId); const h=Math.floor((Date.now()-new Date(f.dateDepart))/3600000);
+          return (
+            <div key={f.id} style={S.alertBanner}>
+              <span style={{fontSize:17}}>🚨</span>
+              <div style={{flex:1}}><strong>{j?.prenom} {j?.nom}</strong> — en fugue depuis <strong>{h}h</strong> ({fDate(f.dateDepart)}){f.signalementPolicier&&<span style={{marginLeft:7,background:C.red,color:"#fff",borderRadius:4,fontSize:10.5,padding:"1px 5px",fontWeight:700}}>Police</span>}</div>
+              <button onClick={()=>setNotifFugue(f)} style={S.btn("notif")}>📣</button>
+              <button onClick={()=>{setModal({type:"retour",fugueId:f.id});setForm({dateRetour:nowISO(),notes:f.notes});}} style={S.btn("success")}>✓ Retour</button>
+              <button onClick={()=>setAlertDismissed(d=>[...d,f.id])} style={{background:"none",border:"none",cursor:"pointer",color:C.gray400,fontSize:16,padding:0,marginLeft:4}}>✕</button>
+            </div>
+          );
+        })}
+        <div style={S.grid4}>
+          {[[C.red,fuguesEnCours.length,"En cours"],[C.amber,fugues.length,"Fugues totales"],[C.green,retoursSous24h,"Retours < 24h"],[C.blue,jeunesSansFugue,"Sans fugue"]].map(([c,v,l])=>(
+            <div key={l} style={S.kpi(c)}><div style={{...S.kpiVal,color:c}}>{v}</div><div style={S.kpiLabel}>{l}</div></div>
+          ))}
+        </div>
+        <div style={S.grid2}>
+          <div style={S.card}>
+            <h3 style={{margin:"0 0 14px",fontSize:14,fontWeight:700,color:C.navy}}>Jeunes en fugue</h3>
+            {fuguesEnCours.length===0?<p style={{color:C.gray400,fontSize:13}}>✅ Aucune fugue en cours.</p>:fuguesEnCours.map(f=>{
+              const j=getJeune(f.jeuneId); const h=Math.floor((Date.now()-new Date(f.dateDepart))/3600000);
+              return (<div key={f.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 0",borderBottom:`1px solid ${C.gray100}`}}>
+                <div><div style={{fontWeight:600,fontSize:13.5}}>{j?.prenom} {j?.nom}</div><div style={{fontSize:11.5,color:C.gray600}}>Ch. {j?.chambre} · {h}h</div></div>
+                <div style={{display:"flex",gap:5}}>
+                  <button onClick={()=>setNotifFugue(f)} style={S.btn("notif")}>📣</button>
+                  <button onClick={()=>{setModal({type:"retour",fugueId:f.id});setForm({dateRetour:nowISO(),notes:f.notes});}} style={S.btn("success")}>Retour</button>
+                </div>
+              </div>);
+            })}
+          </div>
+          <div style={S.card}>
+            <h3 style={{margin:"0 0 14px",fontSize:14,fontWeight:700,color:C.navy}}>Motifs fréquents</h3>
+            {motifStats.length===0?<p style={{color:C.gray400,fontSize:13}}>Pas encore de données.</p>:motifStats.map(({m,n})=>(
+              <div key={m} style={{marginBottom:9}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:12.5,marginBottom:3}}><span>{m}</span><span style={{fontWeight:700}}>{n}</span></div>
+                <div style={{height:5,background:C.gray100,borderRadius:3}}><div style={{height:5,background:C.navy,borderRadius:3,width:`${(n/fugues.length)*100}%`}} /></div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={S.card}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <h3 style={{margin:0,fontSize:14,fontWeight:700,color:C.navy}}>Dernières fugues</h3>
+            <button onClick={()=>setPage("signaler")} style={S.btn("primary")}>+ Signaler</button>
+          </div>
+          <table style={S.table}>
+            <thead><tr><th style={S.th}>Jeune</th><th style={S.th}>Départ</th><th style={S.th}>Durée</th><th style={S.th}>Statut</th><th style={S.th}></th></tr></thead>
+            <tbody>
+              {[...fugues].sort((a,b)=>new Date(b.dateDepart)-new Date(a.dateDepart)).slice(0,6).map(f=>{
+                const j=getJeune(f.jeuneId);
+                return (<tr key={f.id}>
+                  <td style={S.td}><strong>{j?.prenom} {j?.nom}</strong></td>
+                  <td style={S.td}>{fDate(f.dateDepart)}</td>
+                  <td style={S.td}>{dureeH(f.dateDepart,f.dateRetour)||<span style={{color:C.red,fontWeight:600}}>En cours</span>}</td>
+                  <td style={S.td}><span style={S.statusBadge(f.statut)}>{f.statut==="en_cours"?"En cours":"Clôturée"}</span></td>
+                  <td style={S.td}>
+                    <button onClick={()=>setNotifFugue(f)} style={S.btn("notif")}>📣</button>
+                    {f.statut==="en_cours"&&<button onClick={()=>{setModal({type:"retour",fugueId:f.id});setForm({dateRetour:nowISO(),notes:f.notes});}} style={{...S.btn("success"),marginLeft:6}}>Retour</button>}
+                  </td>
+                </tr>);
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  // ── SIGNALER ──
+  const SignalerFugue = () => {
+    const [lf, setLf] = useState({ jeuneId:"", dateDepart:nowISO(), motif:"Inconnu", lieu:"Non identifié", signalementPolicier:false, notes:"", notifASE:true, notifParents:true, notifAstreinte:true, notifPolice:false });
+    const [step, setStep] = useState(1);
+    const [submitted, setSubmitted] = useState(false);
+    function submit() {
+      if (!lf.jeuneId) return;
+      const j=getJeune(parseInt(lf.jeuneId));
+      const newF={id:Date.now(),jeuneId:parseInt(lf.jeuneId),dateDepart:lf.dateDepart,dateRetour:null,motif:lf.motif,lieu:lf.lieu,signalementPolicier:!!lf.signalementPolicier,statut:"en_cours",notes:lf.notes||"",notifications:[]};
+      setFugues(prev=>[...prev,newF]); setSubmitted(true);
+      showToast(`🚨 Fugue de ${j?.prenom} ${j?.nom} enregistrée`, C.red);
+      if (lf.notifASE||lf.notifParents||lf.notifAstreinte||lf.notifPolice) setTimeout(()=>setNotifFugue(newF),700);
+    }
+    if (submitted) return (
+      <div style={{...S.card,maxWidth:480,margin:"0 auto",textAlign:"center",padding:"44px 36px"}}>
+        <div style={{fontSize:50,marginBottom:14}}>✅</div>
+        <div style={{fontSize:19,fontWeight:800,color:C.navy,marginBottom:10}}>Fugue enregistrée !</div>
+        <div style={{fontSize:13.5,color:C.gray600,marginBottom:22}}>Les contacts sélectionnés vont être alertés par SMS et email.</div>
+        <div style={{display:"flex",gap:11,justifyContent:"center"}}>
+          <button style={S.btn("ghost")} onClick={()=>setPage("dashboard")}>← Dashboard</button>
+          <button style={S.btn("primary")} onClick={()=>setSubmitted(false)}>+ Nouvelle fugue</button>
+        </div>
+      </div>
+    );
+    const jS=lf.jeuneId?getJeune(parseInt(lf.jeuneId)):null;
+    return (
+      <div style={{maxWidth:600,margin:"0 auto"}}>
+        <div style={{display:"flex",alignItems:"center",marginBottom:24,gap:0}}>
+          {[["1","Jeune"],["2","Contexte"],["3","Notifications"]].map(([n,label],i)=>(
+            <div key={n} style={{display:"flex",alignItems:"center",flex:1}}>
+              <div style={{display:"flex",alignItems:"center",gap:7,cursor:"pointer"}} onClick={()=>step>parseInt(n)-1&&setStep(parseInt(n))}>
+                <div style={{width:26,height:26,borderRadius:"50%",background:step>=parseInt(n)?C.navy:C.gray200,color:step>=parseInt(n)?"#fff":C.gray600,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,flexShrink:0}}>{n}</div>
+                <span style={{fontSize:12.5,fontWeight:step===parseInt(n)?700:400,color:step>=parseInt(n)?C.navy:C.gray400,whiteSpace:"nowrap"}}>{label}</span>
+              </div>
+              {i<2&&<div style={{flex:1,height:2,background:step>parseInt(n)?C.navy:C.gray200,margin:"0 10px"}} />}
+            </div>
+          ))}
+        </div>
+        <div style={S.card}>
+          {step===1&&(<>
+            <h3 style={{margin:"0 0 18px",fontSize:15,fontWeight:700,color:C.navy}}>Étape 1 — Jeune & date de départ</h3>
+            <div style={S.formGroup}><label style={S.label}>Jeune concerné *</label>
+              <select style={S.select} value={lf.jeuneId} onChange={e=>setLf({...lf,jeuneId:e.target.value})}>
+                <option value="">— Sélectionner —</option>
+                {jeunes.map(j=><option key={j.id} value={j.id}>{j.prenom} {j.nom} ({j.age} ans · Ch. {j.chambre})</option>)}
+              </select>
+            </div>
+            {jS&&<div style={{background:"#EFF6FF",borderRadius:8,padding:"9px 13px",marginBottom:14,fontSize:12.5,color:"#1D4ED8"}}>👤 <strong>{jS.prenom} {jS.nom}</strong> · {jS.age} ans · Chambre {jS.chambre} · {getFuguesJeune(jS.id).length} fugue(s) antérieure(s)</div>}
+            <div style={S.formGroup}><label style={S.label}>Date et heure de départ *</label><input style={S.input} type="datetime-local" value={lf.dateDepart} onChange={e=>setLf({...lf,dateDepart:e.target.value})} /></div>
+            <div style={{display:"flex",justifyContent:"flex-end",marginTop:6}}><button style={S.btn("primary")} onClick={()=>lf.jeuneId&&setStep(2)}>Suivant →</button></div>
+          </>)}
+          {step===2&&(<>
+            <h3 style={{margin:"0 0 18px",fontSize:15,fontWeight:700,color:C.navy}}>Étape 2 — Contexte</h3>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:11}}>
+              <div style={S.formGroup}><label style={S.label}>Motif supposé</label><select style={S.select} value={lf.motif} onChange={e=>setLf({...lf,motif:e.target.value})}>{MOTIFS.map(m=><option key={m}>{m}</option>)}</select></div>
+              <div style={S.formGroup}><label style={S.label}>Lieu probable</label><select style={S.select} value={lf.lieu} onChange={e=>setLf({...lf,lieu:e.target.value})}>{LIEUX.map(l=><option key={l}>{l}</option>)}</select></div>
+            </div>
+            <div style={S.formGroup}><label style={{...S.checkRow}}><input type="checkbox" checked={lf.signalementPolicier} onChange={e=>setLf({...lf,signalementPolicier:e.target.checked})} style={{marginRight:4}} /> Signalement effectué auprès de la police</label></div>
+            <div style={S.formGroup}><label style={S.label}>Notes</label><textarea style={{...S.input,resize:"vertical",minHeight:75}} value={lf.notes} onChange={e=>setLf({...lf,notes:e.target.value})} placeholder="Dernière localisation, contexte, tenue portée…" /></div>
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:6}}>
+              <button style={S.btn("ghost")} onClick={()=>setStep(1)}>← Retour</button>
+              <button style={S.btn("primary")} onClick={()=>setStep(3)}>Suivant →</button>
+            </div>
+          </>)}
+          {step===3&&(<>
+            <h3 style={{margin:"0 0 6px",fontSize:15,fontWeight:700,color:C.navy}}>Étape 3 — Notifications</h3>
+            <p style={{fontSize:12.5,color:C.gray600,marginBottom:18}}>Contacts à alerter par <strong>SMS + Email</strong> automatiquement.</p>
+            {[{key:"notifASE",label:"ASE",icon:"🏛",info:contacts.ase},{key:"notifParents",label:"Parents / Représentants légaux",icon:"👨‍👩‍👦",info:jS?{nom:`Famille ${jS.nom}`,email:jS.parentEmail,tel:jS.parentTel}:{}},{key:"notifAstreinte",label:"Éducateur d'astreinte",icon:"🌙",info:contacts.astreinte},{key:"notifPolice",label:"Police / Gendarmerie",icon:"🚔",info:contacts.police}].map(({key,label,icon,info})=>(
+              <div key={key} style={{background:lf[key]?"#EFF6FF":C.gray50,border:`1.5px solid ${lf[key]?"#93C5FD":C.gray200}`,borderRadius:9,padding:"13px 14px",marginBottom:9,cursor:"pointer"}} onClick={()=>setLf({...lf,[key]:!lf[key]})}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <input type="checkbox" checked={!!lf[key]} onChange={()=>{}} style={{width:15,height:15}} />
+                  <span style={{fontSize:18}}>{icon}</span>
+                  <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13.5,color:C.navy}}>{label}</div><div style={{fontSize:11.5,color:C.gray600}}>{info.nom} · {info.tel}</div></div>
+                  {lf[key]&&<div style={{display:"flex",gap:5}}><span style={S.notifChip(true)}>📱 SMS</span><span style={S.notifChip(true)}>✉️ Email</span></div>}
+                </div>
+              </div>
+            ))}
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:16}}>
+              <button style={S.btn("ghost")} onClick={()=>setStep(2)}>← Retour</button>
+              <button style={S.btn("danger")} onClick={submit}>🚨 Enregistrer & alerter</button>
+            </div>
+          </>)}
+        </div>
+      </div>
+    );
+  };
+
+  // ── SUIVI JEUNES ──
+  const SuiviJeunes = () => (
+    <div style={{display:"flex",gap:13,flexWrap:"wrap"}}>
+      {jeunes.map(j=>{
+        const fj=getFuguesJeune(j.id); const ec=fj.find(f=>f.statut==="en_cours");
+        return (<div key={j.id} onClick={()=>{setSelectedJeune(j);setPage("profil");}} style={{...S.card,width:200,cursor:"pointer",border:ec?`2px solid ${C.red}`:"2px solid transparent",position:"relative"}}>
+          {ec&&<div style={{position:"absolute",top:11,right:11,width:9,height:9,borderRadius:"50%",background:C.red,boxShadow:`0 0 0 3px rgba(230,57,70,0.2)`}} />}
+          <div style={{width:42,height:42,borderRadius:"50%",background:"#E8ECF5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:700,marginBottom:11,color:C.navy}}>{j.prenom[0]}{j.nom[0]}</div>
+          <div style={{fontWeight:700,fontSize:13.5,marginBottom:2}}>{j.prenom} {j.nom}</div>
+          <div style={{fontSize:11.5,color:C.gray600,marginBottom:9}}>{j.age} ans · Chambre {j.chambre}</div>
+          <div style={{display:"flex",gap:6}}>
+            <span style={{...S.statusBadge(ec?"en_cours":"cloturee"),fontSize:10.5}}>{ec?"En fugue":"Présent"}</span>
+            <span style={{background:C.gray100,borderRadius:20,fontSize:10.5,fontWeight:600,padding:"2px 7px",color:C.gray700}}>{fj.length} fugue{fj.length>1?"s":""}</span>
+          </div>
+        </div>);
+      })}
+      <div onClick={()=>openModal("jeune",{dateEntree:nowISO().slice(0,10)})} style={{...S.card,width:200,cursor:"pointer",border:`2px dashed ${C.gray200}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:C.gray400,minHeight:130}}>
+        <div style={{fontSize:26,marginBottom:5}}>+</div><div style={{fontSize:12.5,fontWeight:600}}>Ajouter un jeune</div>
+      </div>
+    </div>
+  );
+
+  // ── PROFIL ──
+  const ProfilJeune = () => {
+    if (!selectedJeune) return null;
+    const j=selectedJeune; const fj=getFuguesJeune(j.id); const ec=fj.find(f=>f.statut==="en_cours");
+    return (
+      <div>
+        <button onClick={()=>setPage("jeunes")} style={{...S.btn("ghost"),marginBottom:18,fontSize:12.5}}>← Retour</button>
+        <div style={{display:"flex",gap:18,alignItems:"flex-start"}}>
+          <div style={{...S.card,minWidth:200}}>
+            <div style={{width:48,height:48,borderRadius:"50%",background:"#E8ECF5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,fontWeight:700,marginBottom:13,color:C.navy}}>{j.prenom[0]}{j.nom[0]}</div>
+            <div style={{fontWeight:800,fontSize:16}}>{j.prenom} {j.nom}</div>
+            <div style={{fontSize:12.5,color:C.gray600,marginBottom:11}}>{j.age} ans</div>
+            {[["Chambre",j.chambre],["Entrée",fDateShort(j.dateEntree)],["Fugues",fj.length]].map(([k,v])=>(<div key={k} style={{fontSize:12,marginBottom:5}}><strong>{k} :</strong> {v}</div>))}
+            <div style={{marginTop:11}}><span style={S.statusBadge(ec?"en_cours":"cloturee")}>{ec?"🔴 En fugue":"🟢 Présent"}</span></div>
+            {ec&&<button onClick={()=>setNotifFugue(ec)} style={{...S.btn("notif"),width:"100%",justifyContent:"center",marginTop:9}}>📣 Notifier</button>}
+          </div>
+          <div style={{flex:1,...S.card}}>
+            <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:700}}>Historique des fugues</h3>
+            {fj.length===0?<p style={{color:C.gray400,fontSize:13}}>Aucune fugue enregistrée.</p>:(
+              <div style={S.timeline}>
+                {fj.map((f,i)=>(
+                  <div key={f.id} style={S.timelineItem}>
+                    <div style={S.timelineDot(f.statut==="en_cours"?C.red:C.green)} />
+                    {i<fj.length-1&&<div style={S.timelineLine} />}
+                    <div style={{background:C.gray50,borderRadius:9,padding:"11px 14px"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+                        <span style={{fontWeight:700,fontSize:13}}>Fugue du {fDateShort(f.dateDepart)}</span>
+                        <span style={S.statusBadge(f.statut)}>{f.statut==="en_cours"?"En cours":"Clôturée"}</span>
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"3px 14px",fontSize:12,color:C.gray700,marginBottom:f.notes?7:0}}>
+                        <span>🕐 {fDate(f.dateDepart)}</span><span>🏁 {fDate(f.dateRetour)}</span>
+                        <span>📍 {f.lieu}</span><span>⏱ {dureeH(f.dateDepart,f.dateRetour)||<span style={{color:C.red}}>En cours</span>}</span>
+                        <span>🔎 {f.motif}</span><span>{f.signalementPolicier?"🚔 Signalé":"Pas de signalement"}</span>
+                      </div>
+                      {f.notifications?.length>0&&<div style={{marginTop:5}}>{f.notifications.map((n,i)=><span key={i} style={S.notifChip(n.statut==="envoyé")}>✓ {n.dest} {n.type}</span>)}</div>}
+                      {f.notes&&<div style={{fontSize:12,color:C.gray600,fontStyle:"italic",borderTop:`1px solid ${C.gray200}`,paddingTop:7,marginTop:7}}>"{f.notes}"</div>}
+                      <div style={{display:"flex",gap:7,marginTop:9}}>
+                        <button onClick={()=>setNotifFugue(f)} style={S.btn("notif")}>📣</button>
+                        {f.statut==="en_cours"&&<button onClick={()=>{setModal({type:"retour",fugueId:f.id});setForm({dateRetour:nowISO(),notes:f.notes});}} style={S.btn("success")}>✓ Retour</button>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ── STATS ──
+  const Statistiques = () => {
+    const moisL=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
+    const parMois=Array(12).fill(0); fugues.forEach(f=>parMois[new Date(f.dateDepart).getMonth()]++);
+    const maxM=Math.max(...parMois,1);
+    const durees=fugues.filter(f=>f.dateRetour).map(f=>(new Date(f.dateRetour)-new Date(f.dateDepart))/3600000);
+    const moy=durees.length?(durees.reduce((a,b)=>a+b,0)/durees.length).toFixed(1):0;
+    return (
+      <div>
+        <div style={S.grid3}>
+          {[[C.navy,fugues.length,"Total fugues"],[C.amber,`${moy}h`,"Durée moyenne"],[C.red,fugues.filter(f=>f.signalementPolicier).length,"Signalements police"]].map(([c,v,l])=>(
+            <div key={l} style={S.kpi(c)}><div style={{...S.kpiVal,color:c}}>{v}</div><div style={S.kpiLabel}>{l}</div></div>
+          ))}
+        </div>
+        <div style={S.grid2}>
+          <div style={S.card}>
+            <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:700}}>Fugues par mois</h3>
+            <div style={{display:"flex",alignItems:"flex-end",gap:4,height:90}}>
+              {parMois.map((n,i)=>(<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                <div style={{width:"100%",background:n>0?C.navy:C.gray200,borderRadius:"3px 3px 0 0",height:`${(n/maxM)*75}px`,minHeight:n>0?5:2}} />
+                <span style={{fontSize:8.5,color:C.gray400}}>{moisL[i]}</span>
+              </div>))}
+            </div>
+          </div>
+          <div style={S.card}>
+            <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:700}}>Par motif</h3>
+            {MOTIFS.map(m=>{const n=fugues.filter(f=>f.motif===m).length;if(!n)return null;return(
+              <div key={m} style={{marginBottom:9}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:12.5,marginBottom:3}}><span>{m}</span><span style={{fontWeight:700}}>{n} ({Math.round((n/fugues.length)*100)}%)</span></div>
+                <div style={{height:6,background:C.gray100,borderRadius:3}}><div style={{height:6,background:C.navy,borderRadius:3,width:`${(n/fugues.length)*100}%`}} /></div>
+              </div>
+            );})}
+          </div>
+        </div>
+        <div style={S.card}>
+          <h3 style={{margin:"0 0 14px",fontSize:14,fontWeight:700}}>Par jeune</h3>
+          <table style={S.table}>
+            <thead><tr><th style={S.th}>Jeune</th><th style={S.th}>Âge</th><th style={S.th}>Fugues</th><th style={S.th}>Durée moy.</th><th style={S.th}>Signalements</th></tr></thead>
+            <tbody>{jeunes.map(j=>{
+              const fj=getFuguesJeune(j.id);
+              const d=fj.filter(f=>f.dateRetour).map(f=>(new Date(f.dateRetour)-new Date(f.dateDepart))/3600000);
+              const mo=d.length?(d.reduce((a,b)=>a+b,0)/d.length).toFixed(1):"—";
+              return(<tr key={j.id}><td style={S.td}><strong>{j.prenom} {j.nom}</strong></td><td style={S.td}>{j.age} ans</td><td style={S.td}><span style={{fontWeight:700,color:fj.length>2?C.red:C.gray900}}>{fj.length}</span></td><td style={S.td}>{mo!=="—"?`${mo}h`:"—"}</td><td style={S.td}>{fj.filter(f=>f.signalementPolicier).length}</td></tr>);
+            })}</tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  // ── NOTIFICATIONS ──
+  const Notifications = () => {
+    const allN=fugues.flatMap(f=>(f.notifications||[]).map(n=>({...n,fugue:f,jeune:getJeune(f.jeuneId)}))).sort((a,b)=>b.fugue.id-a.fugue.id);
+    return (
+      <div style={S.card}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <h3 style={{margin:0,fontSize:14,fontWeight:700,color:C.navy}}>Journal des notifications</h3>
+          <span style={{fontSize:12.5,color:C.gray600}}>{allN.length} au total</span>
+        </div>
+        {allN.length===0
+          ?<div style={{textAlign:"center",padding:"36px 0",color:C.gray400}}><div style={{fontSize:38,marginBottom:11}}>📭</div><div style={{fontSize:13.5}}>Aucune notification envoyée.</div></div>
+          :<table style={S.table}>
+            <thead><tr><th style={S.th}>Jeune</th><th style={S.th}>Destinataire</th><th style={S.th}>Type</th><th style={S.th}>Heure</th><th style={S.th}>Statut</th></tr></thead>
+            <tbody>{allN.map((n,i)=>(<tr key={i}><td style={S.td}><strong>{n.jeune?.prenom} {n.jeune?.nom}</strong></td><td style={S.td}>{n.dest}</td><td style={S.td}>{n.type==="SMS"?"📱 SMS":"✉️ Email"}</td><td style={S.td}>{n.heure}</td><td style={S.td}><span style={S.statusBadge(n.statut)}>{n.statut}</span></td></tr>))}</tbody>
+          </table>
+        }
+      </div>
+    );
+  };
+
+  const pageTitles={dashboard:"Tableau de bord",signaler:"Signaler une fugue",jeunes:"Suivi par jeune",profil:selectedJeune?`${selectedJeune.prenom} ${selectedJeune.nom}`:"",stats:"Statistiques",notifications:"Notifications"};
+
+  return (
+    <div style={S.app}>
+      {toast&&<div style={{position:"fixed",bottom:22,right:22,background:toast.color,color:"#fff",borderRadius:10,padding:"11px 18px",fontSize:13.5,fontWeight:600,zIndex:9999,boxShadow:"0 4px 16px rgba(0,0,0,0.2)"}}>{toast.msg}</div>}
+      <div style={S.sidebar}>
+        <div style={S.sidebarLogo}>
+          <div style={S.sidebarBrand}>FoyerSécure</div>
+          <p style={S.sidebarFoyer}>{session.nom}</p>
+          <p style={S.sidebarVille}>📍 {session.ville}</p>
+        </div>
+        <nav style={S.nav}>
+          <div style={S.navLabel}>Menu</div>
+          {navItems.map(item=>(
+            <button key={item.key} style={{...S.navItem(page===item.key||(page==="profil"&&item.key==="jeunes")),..( item.highlight?{background:"rgba(230,57,70,0.15)",color:page===item.key?"#fff":"#FCA5A5"}:{})}} onClick={()=>setPage(item.key)}>
+              <span>{item.icon}</span><span style={{flex:1}}>{item.label}</span>
+              {item.badge&&<span style={S.navBadge(item.bc)}>{item.badge}</span>}
+            </button>
+          ))}
+          <div style={S.navLabel}>Compte</div>
+          <button style={S.navItem(false)} onClick={()=>setAppPage("abonnement")}><span>💳</span><span>Abonnement</span></button>
+        </nav>
+        <div style={{padding:"13px 11px",borderTop:"1px solid rgba(255,255,255,0.08)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,padding:"0 3px",marginBottom:9}}>
+            <div style={{width:30,height:30,borderRadius:"50%",background:"rgba(255,255,255,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#fff",flexShrink:0}}>{session.nom[0]}</div>
+            <div style={{overflow:"hidden"}}>
+              <div style={{fontSize:11.5,color:"#fff",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{session.nom}</div>
+              <span style={S.roleBadge(session.role)}>{session.role}</span>
+            </div>
+          </div>
+          <button style={S.btn("logout")} onClick={()=>{setSession(null);setAppPage("login");}}>⬅ Déconnexion</button>
+        </div>
+      </div>
+      <main style={S.main}>
+        <div style={S.pageHeader}>
+          <h1 style={S.pageTitle}>{pageTitles[page]}</h1>
+          {page==="jeunes"&&<button onClick={()=>openModal("jeune",{dateEntree:nowISO().slice(0,10)})} style={S.btn("primary")}>+ Ajouter un jeune</button>}
+        </div>
+        {page==="dashboard"&&<Dashboard />}
+        {page==="signaler"&&<SignalerFugue />}
+        {page==="jeunes"&&<SuiviJeunes />}
+        {page==="profil"&&<ProfilJeune />}
+        {page==="stats"&&<Statistiques />}
+        {page==="notifications"&&<Notifications />}
+      </main>
+      {modal&&(
+        <div style={S.modalOverlay} onClick={closeModal}>
+          <div style={S.modalBox} onClick={e=>e.stopPropagation()}>
+            {modal.type==="retour"&&(()=>{
+              const f=fugues.find(f=>f.id===modal.fugueId); const j=getJeune(f?.jeuneId);
+              return(<><h2 style={S.modalTitle}>✅ Enregistrer le retour</h2>
+                <p style={{color:C.gray600,fontSize:13,marginBottom:18}}>{j?.prenom} {j?.nom} — parti le {fDate(f?.dateDepart)}</p>
+                <div style={S.formGroup}><label style={S.label}>Date et heure de retour *</label><input style={S.input} type="datetime-local" value={form.dateRetour} onChange={e=>setForm({...form,dateRetour:e.target.value})} /></div>
+                <div style={S.formGroup}><label style={S.label}>Notes</label><textarea style={{...S.input,resize:"vertical",minHeight:65}} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Conditions de retour, état du jeune…" /></div>
+                <div style={S.modalFooter}><button style={S.btn("ghost")} onClick={closeModal}>Annuler</button><button style={S.btn("success")} onClick={enregistrerRetour}>Confirmer</button></div>
+              </>);
+            })()}
+            {modal.type==="jeune"&&(<>
+              <h2 style={S.modalTitle}>👤 Ajouter un jeune</h2>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:11}}>
+                <div style={S.formGroup}><label style={S.label}>Prénom *</label><input style={S.input} value={form.prenom||""} onChange={e=>setForm({...form,prenom:e.target.value})} placeholder="Prénom" /></div>
+                <div style={S.formGroup}><label style={S.label}>Nom *</label><input style={S.input} value={form.nom||""} onChange={e=>setForm({...form,nom:e.target.value})} placeholder="Nom" /></div>
+                <div style={S.formGroup}><label style={S.label}>Âge</label><input style={S.input} type="number" value={form.age||""} onChange={e=>setForm({...form,age:e.target.value})} /></div>
+                <div style={S.formGroup}><label style={S.label}>Chambre</label><input style={S.input} value={form.chambre||""} onChange={e=>setForm({...form,chambre:e.target.value})} placeholder="ex: 12A" /></div>
+                <div style={S.formGroup}><label style={S.label}>Email parents</label><input style={S.input} type="email" value={form.parentEmail||""} onChange={e=>setForm({...form,parentEmail:e.target.value})} /></div>
+                <div style={S.formGroup}><label style={S.label}>Tél. parents</label><input style={S.input} value={form.parentTel||""} onChange={e=>setForm({...form,parentTel:e.target.value})} /></div>
+              </div>
+              <div style={S.formGroup}><label style={S.label}>Date d'entrée</label><input style={S.input} type="date" value={form.dateEntree||""} onChange={e=>setForm({...form,dateEntree:e.target.value})} /></div>
+              <div style={S.modalFooter}><button style={S.btn("ghost")} onClick={closeModal}>Annuler</button><button style={S.btn("primary")} onClick={enregistrerJeune}>Ajouter</button></div>
+            </>)}
+          </div>
+        </div>
+      )}
+      {notifFugue&&<NotifPanel fugue={notifFugue} jeune={getJeune(notifFugue.jeuneId)} contacts={contacts} onClose={()=>setNotifFugue(null)} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+
+  </script>
+</body>
+</html>
