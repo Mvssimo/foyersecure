@@ -1,209 +1,207 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
   <title>FoyerSécure</title>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, system-ui, sans-serif; background: #F0F2F7; }
-    input, select, textarea, button { font-family: inherit; }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:-apple-system,system-ui,sans-serif;background:#F0F2F7;}
+    input,select,textarea,button{font-family:inherit;}
+    ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:4px;}
+    @media print{.no-print{display:none!important;}.print-only{display:block!important;}}
+    .print-only{display:none;}
   </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
+const {useState,useEffect,useCallback}=React;
 
-const { useState } = React;
+// ── STORAGE (base de données persistante via localStorage) ──────────
+const DB={
+  get(key){try{const v=localStorage.getItem("fs_"+key);return v?JSON.parse(v):null;}catch(e){return null;}},
+  set(key,val){try{localStorage.setItem("fs_"+key,JSON.stringify(val));}catch(e){}},
+  del(key){try{localStorage.removeItem("fs_"+key);}catch(e){}}
+};
 
-const COMPTES = [
+// ── DONNÉES INITIALES ───────────────────────────────────────────────
+const INIT_COMPTES=[
   {
-    id: "f1", email: "oliviers@foyersecure.fr", motDePasse: "demo1234",
-    nom: "Foyer Les Oliviers", ville: "Toulouse", role: "admin",
-    contacts: {
-      ase: { nom: "Mme Dupont – ASE", email: "ase31@haute-garonne.fr", tel: "0561991234" },
-      astreinte: { nom: "Éducateur de nuit", email: "astreinte@lesoliviers.fr", tel: "0612345678" },
-      police: { nom: "Commissariat Toulouse", email: "toulouse@police.fr", tel: "17" },
+    id:"f1",email:"oliviers@foyersecure.fr",motDePasse:"demo1234",
+    nom:"Foyer Les Oliviers",ville:"Toulouse",role:"admin",
+    educateurs:[{id:"e1",nom:"Dupont Marie",poste:"Éducatrice spécialisée"},{id:"e2",nom:"Martin Paul",poste:"Éducateur référent"},{id:"e3",nom:"Bernard Sophie",poste:"Chef de service"}],
+    contacts:{
+      ase:{nom:"Mme Dupont – ASE Haute-Garonne",email:"ase31@haute-garonne.fr",tel:"0561991234"},
+      astreinte:{nom:"Éducateur de nuit",email:"astreinte@lesoliviers.fr",tel:"0612345678"},
+      police:{nom:"Commissariat Toulouse Centre",email:"toulouse@police.fr",tel:"17"},
     },
-    jeunes: [
-      { id: 1, nom: "Martin", prenom: "Lucas", age: 15, chambre: "12A", dateEntree: "2024-09-01", parentEmail: "parents.martin@email.fr", parentTel: "0687654321" },
-      { id: 2, nom: "Dubois", prenom: "Camille", age: 16, chambre: "08B", dateEntree: "2024-11-15", parentEmail: "dubois@email.fr", parentTel: "0698765432" },
-      { id: 3, nom: "Bernard", prenom: "Noah", age: 14, chambre: "05C", dateEntree: "2025-01-10", parentEmail: "bernard@email.fr", parentTel: "0611223344" },
+    jeunes:[
+      {id:1,nom:"Martin",prenom:"Lucas",age:15,chambre:"12A",dateEntree:"2024-09-01",parentEmail:"parents.martin@email.fr",parentTel:"0687654321"},
+      {id:2,nom:"Dubois",prenom:"Camille",age:16,chambre:"08B",dateEntree:"2024-11-15",parentEmail:"dubois@email.fr",parentTel:"0698765432"},
+      {id:3,nom:"Bernard",prenom:"Noah",age:14,chambre:"05C",dateEntree:"2025-01-10",parentEmail:"bernard@email.fr",parentTel:"0611223344"},
+      {id:4,nom:"Petit",prenom:"Inès",age:17,chambre:"14A",dateEntree:"2024-07-22",parentEmail:"petit@email.fr",parentTel:"0622334455"},
     ],
-    fugues: [
-      { id: 1, jeuneId: 1, dateDepart: "2025-03-10T22:30", dateRetour: "2025-03-11T14:00", motif: "Conflit avec éducateur", lieu: "Domicile familial", signalementPolicier: true, statut: "cloturee", notes: "Retour volontaire.", notifications: [] },
-      { id: 2, jeuneId: 2, dateDepart: "2025-05-01T18:00", dateRetour: "2025-05-01T23:45", motif: "Tension avec pair", lieu: "Centre-ville", signalementPolicier: false, statut: "cloturee", notes: "Retour spontané.", notifications: [] },
-      { id: 3, jeuneId: 3, dateDepart: "2025-05-20T21:00", dateRetour: null, motif: "Inconnu", lieu: "Non identifié", signalementPolicier: true, statut: "en_cours", notes: "", notifications: [{ dest: "ASE", type: "SMS", heure: "21:02", statut: "envoyé" }] },
+    fugues:[
+      {id:1,jeuneId:1,dateDepart:"2025-03-10T22:30",dateRetour:"2025-03-11T14:00",motif:"Conflit avec éducateur",lieu:"Domicile familial",signalementPolicier:true,statut:"cloturee",notes:"Retour volontaire.",notifications:[],educateurId:"e1",educateurNom:"Dupont Marie"},
+      {id:2,jeuneId:1,dateDepart:"2025-04-22T20:00",dateRetour:"2025-04-23T09:30",motif:"Inconnu",lieu:"Non identifié",signalementPolicier:true,statut:"cloturee",notes:"Retrouvé par la police.",notifications:[],educateurId:"e2",educateurNom:"Martin Paul"},
+      {id:3,jeuneId:2,dateDepart:"2025-05-01T18:00",dateRetour:"2025-05-01T23:45",motif:"Tension avec pair",lieu:"Centre-ville",signalementPolicier:false,statut:"cloturee",notes:"Retour spontané.",notifications:[],educateurId:"e1",educateurNom:"Dupont Marie"},
+      {id:4,jeuneId:3,dateDepart:"2025-05-20T21:00",dateRetour:null,motif:"Inconnu",lieu:"Non identifié",signalementPolicier:true,statut:"en_cours",notes:"",notifications:[{dest:"ASE",type:"SMS",heure:"21:02",statut:"envoyé"},{dest:"Police",type:"Email",heure:"21:02",statut:"envoyé"}],educateurId:"e3",educateurNom:"Bernard Sophie"},
+      {id:5,jeuneId:4,dateDepart:"2025-02-14T19:00",dateRetour:"2025-02-15T08:00",motif:"Visite non autorisée",lieu:"Chez un ami",signalementPolicier:false,statut:"cloturee",notes:"",notifications:[],educateurId:"e2",educateurNom:"Martin Paul"},
     ],
   },
   {
-    id: "f2", email: "horizon@foyersecure.fr", motDePasse: "demo5678",
-    nom: "Foyer Horizon", ville: "Bordeaux", role: "educateur",
-    contacts: {
-      ase: { nom: "M. Lefebvre – ASE Gironde", email: "ase33@gironde.fr", tel: "0556123456" },
-      astreinte: { nom: "Éducateur de nuit", email: "astreinte@horizon.fr", tel: "0623456789" },
-      police: { nom: "Commissariat Bordeaux", email: "bordeaux@police.fr", tel: "17" },
+    id:"f2",email:"horizon@foyersecure.fr",motDePasse:"demo5678",
+    nom:"Foyer Horizon",ville:"Bordeaux",role:"educateur",
+    educateurs:[{id:"e10",nom:"Lefevre Anne",poste:"Éducatrice spécialisée"},{id:"e11",nom:"Garnier Tom",poste:"Éducateur référent"}],
+    contacts:{
+      ase:{nom:"M. Lefebvre – ASE Gironde",email:"ase33@gironde.fr",tel:"0556123456"},
+      astreinte:{nom:"Éducateur de nuit",email:"astreinte@horizon.fr",tel:"0623456789"},
+      police:{nom:"Commissariat Bordeaux",email:"bordeaux@police.fr",tel:"17"},
     },
-    jeunes: [
-      { id: 10, nom: "Moreau", prenom: "Théo", age: 15, chambre: "A1", dateEntree: "2025-01-05", parentEmail: "moreau@email.fr", parentTel: "0633445566" },
-      { id: 11, nom: "Leroy", prenom: "Jade", age: 16, chambre: "B2", dateEntree: "2024-12-01", parentEmail: "leroy@email.fr", parentTel: "0644556677" },
+    jeunes:[
+      {id:10,nom:"Moreau",prenom:"Théo",age:15,chambre:"A1",dateEntree:"2025-01-05",parentEmail:"moreau@email.fr",parentTel:"0633445566"},
+      {id:11,nom:"Leroy",prenom:"Jade",age:16,chambre:"B2",dateEntree:"2024-12-01",parentEmail:"leroy@email.fr",parentTel:"0644556677"},
     ],
-    fugues: [
-      { id: 10, jeuneId: 10, dateDepart: "2025-04-05T20:00", dateRetour: "2025-04-06T07:30", motif: "Fugue amoureuse", lieu: "Chez un ami", signalementPolicier: false, statut: "cloturee", notes: "", notifications: [] },
-      { id: 11, jeuneId: 11, dateDepart: "2025-05-25T19:30", dateRetour: null, motif: "Tension avec pair", lieu: "Non identifié", signalementPolicier: true, statut: "en_cours", notes: "", notifications: [] },
+    fugues:[
+      {id:10,jeuneId:10,dateDepart:"2025-04-05T20:00",dateRetour:"2025-04-06T07:30",motif:"Fugue amoureuse",lieu:"Chez un ami",signalementPolicier:false,statut:"cloturee",notes:"",notifications:[],educateurId:"e10",educateurNom:"Lefevre Anne"},
+      {id:11,jeuneId:11,dateDepart:"2025-05-25T19:30",dateRetour:null,motif:"Tension avec pair",lieu:"Non identifié",signalementPolicier:true,statut:"en_cours",notes:"",notifications:[],educateurId:"e11",educateurNom:"Garnier Tom"},
+    ],
+  },
+  {
+    id:"f3",email:"aurore@foyersecure.fr",motDePasse:"demo9012",
+    nom:"MECS Aurore",ville:"Montpellier",role:"admin",
+    educateurs:[{id:"e20",nom:"Blanc Julie",poste:"Directrice"},{id:"e21",nom:"Noir Marc",poste:"Éducateur spécialisé"}],
+    contacts:{
+      ase:{nom:"Mme Rossi – ASE Hérault",email:"ase34@herault.fr",tel:"0467123456"},
+      astreinte:{nom:"Éducateur de nuit",email:"astreinte@aurore.fr",tel:"0634567890"},
+      police:{nom:"Commissariat Montpellier",email:"montpellier@police.fr",tel:"17"},
+    },
+    jeunes:[
+      {id:20,nom:"Simon",prenom:"Enzo",age:13,chambre:"3B",dateEntree:"2025-02-10",parentEmail:"simon@email.fr",parentTel:"0645678901"},
+      {id:21,nom:"Lopez",prenom:"Sara",age:17,chambre:"1A",dateEntree:"2024-08-15",parentEmail:"lopez@email.fr",parentTel:"0656789012"},
+      {id:22,nom:"Blanc",prenom:"Tom",age:14,chambre:"2C",dateEntree:"2025-03-01",parentEmail:"blanc@email.fr",parentTel:"0667890123"},
+    ],
+    fugues:[
+      {id:20,jeuneId:21,dateDepart:"2025-03-18T21:00",dateRetour:"2025-03-19T10:00",motif:"Conflit avec éducateur",lieu:"Domicile familial",signalementPolicier:false,statut:"cloturee",notes:"",notifications:[],educateurId:"e20",educateurNom:"Blanc Julie"},
+      {id:21,jeuneId:22,dateDepart:"2025-05-30T20:00",dateRetour:null,motif:"Inconnu",lieu:"Non identifié",signalementPolicier:true,statut:"en_cours",notes:"",notifications:[],educateurId:"e21",educateurNom:"Noir Marc"},
     ],
   },
 ];
 
-const MOTIFS = ["Conflit avec éducateur","Tension avec pair","Visite non autorisée","Fugue amoureuse","Inconnu","Autre"];
-const LIEUX = ["Domicile familial","Chez un ami","Quartier centre-ville","Non identifié","Autre"];
+// Compte super admin (tableau de bord direction)
+const SUPER_ADMIN={id:"admin",email:"direction@foyersecure.fr",motDePasse:"admin2024",nom:"Direction Générale",role:"superadmin"};
 
-function fDate(dt) {
-  if (!dt) return "—";
-  return new Date(dt).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
-}
-function dureeH(dep,ret) {
-  if (!ret) return null;
-  const d = new Date(ret)-new Date(dep);
-  const h = Math.floor(d/3600000), m = Math.floor((d%3600000)/60000);
-  return h>0?`${h}h${m>0?m+"min":""}`:`${m}min`;
-}
-function nowISO() { return new Date().toISOString().slice(0,16); }
+const MOTIFS=["Conflit avec éducateur","Tension avec pair","Visite non autorisée","Fugue amoureuse","Inconnu","Autre"];
+const LIEUX=["Domicile familial","Chez un ami","Quartier centre-ville","Non identifié","Autre"];
+const MOIS_LABELS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+const MOIS_SHORT=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
 
-const navy="#0F1F3D", red="#E63946", green="#2DC653", amber="#F59E0B", blue="#3B82F6";
-const bg="#F0F2F7", white="#fff", gray100="#F0F2F7", gray200="#E5E7EB", gray400="#9CA3AF", gray600="#6B7280", gray700="#374151", gray900="#1A1F36";
+// ── UTILITAIRES ─────────────────────────────────────────────────────
+function fDate(dt){if(!dt)return"—";return new Date(dt).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});}
+function fDateShort(dt){if(!dt)return"—";return new Date(dt).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});}
+function dureeH(dep,ret){if(!ret)return null;const d=new Date(ret)-new Date(dep);const h=Math.floor(d/3600000),m=Math.floor((d%3600000)/60000);return h>0?`${h}h${m>0?m+"min":""}`:`${m}min`;}
+function nowISO(){return new Date().toISOString().slice(0,16);}
+function moisAnnee(dt){const d=new Date(dt);return`${d.getMonth()}-${d.getFullYear()}`;}
 
-function btn(v) {
+// ── COULEURS & STYLES ───────────────────────────────────────────────
+const C={navy:"#0F1F3D",red:"#E63946",green:"#2DC653",amber:"#F59E0B",blue:"#3B82F6",purple:"#7C3AED",bg:"#F0F2F7",white:"#fff",gray100:"#F0F2F7",gray200:"#E5E7EB",gray400:"#9CA3AF",gray600:"#6B7280",gray700:"#374151",gray900:"#1A1F36"};
+const card={background:C.white,borderRadius:12,padding:"20px 24px",boxShadow:"0 1px 4px rgba(15,31,61,0.07)"};
+const inp={width:"100%",border:"1.5px solid #D1D5DB",borderRadius:8,padding:"9px 12px",fontSize:13.5,outline:"none",boxSizing:"border-box",color:C.gray900};
+const sel={width:"100%",border:"1.5px solid #D1D5DB",borderRadius:8,padding:"9px 12px",fontSize:13.5,outline:"none",boxSizing:"border-box",background:C.white};
+const lbl={display:"block",fontSize:12.5,fontWeight:600,color:C.gray700,marginBottom:5};
+const fg={marginBottom:15};
+const overlay={position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:16};
+const mbox={background:C.white,borderRadius:14,padding:"24px 28px",width:"100%",maxWidth:520,boxShadow:"0 8px 40px rgba(0,0,0,0.2)",maxHeight:"90vh",overflowY:"auto"};
+
+function B(v){
   const b={padding:"9px 18px",borderRadius:8,fontSize:13.5,fontWeight:600,cursor:"pointer",border:"none",display:"inline-flex",alignItems:"center",gap:7,whiteSpace:"nowrap"};
-  if(v==="primary") return {...b,background:navy,color:white};
-  if(v==="danger")  return {...b,background:red,color:white};
-  if(v==="success") return {...b,background:green,color:white,fontSize:12,padding:"7px 14px"};
-  if(v==="ghost")   return {...b,background:"transparent",color:navy,border:"1.5px solid #D0D5E8"};
-  if(v==="logout")  return {...b,background:"rgba(255,255,255,0.07)",color:"rgba(255,255,255,0.6)",fontSize:12,padding:"7px 12px",width:"100%",justifyContent:"center"};
-  if(v==="notif")   return {...b,background:"#FFF7ED",color:"#C2410C",border:"1px solid #FED7AA",fontSize:12,padding:"6px 12px"};
+  if(v==="primary")return{...b,background:C.navy,color:C.white};
+  if(v==="danger")return{...b,background:C.red,color:C.white};
+  if(v==="success")return{...b,background:C.green,color:C.white,fontSize:12,padding:"7px 14px"};
+  if(v==="ghost")return{...b,background:"transparent",color:C.navy,border:"1.5px solid #D0D5E8"};
+  if(v==="logout")return{...b,background:"rgba(255,255,255,0.07)",color:"rgba(255,255,255,0.6)",fontSize:12,padding:"7px 12px",width:"100%",justifyContent:"center"};
+  if(v==="notif")return{...b,background:"#FFF7ED",color:"#C2410C",border:"1px solid #FED7AA",fontSize:12,padding:"6px 12px"};
+  if(v==="sm")return{...b,background:C.gray100,color:C.gray700,fontSize:12,padding:"5px 11px"};
   return b;
 }
-function sbadge(s) {
-  const m={en_cours:{bg:"#FEF3C7",c:"#D97706"},cloturee:{bg:"#D1FAE5",c:"#059669"},"envoyé":{bg:"#D1FAE5",c:"#059669"}};
-  const x=m[s]||{bg:"#F3F4F6",c:gray600};
-  return {background:x.bg,color:x.c,borderRadius:20,fontSize:11.5,fontWeight:700,padding:"3px 10px",whiteSpace:"nowrap"};
-}
-const card={background:white,borderRadius:12,padding:"20px 24px",boxShadow:"0 1px 4px rgba(15,31,61,0.07)"};
-const input={width:"100%",border:"1.5px solid #D1D5DB",borderRadius:8,padding:"9px 12px",fontSize:13.5,outline:"none",boxSizing:"border-box",color:gray900};
-const select={width:"100%",border:"1.5px solid #D1D5DB",borderRadius:8,padding:"9px 12px",fontSize:13.5,outline:"none",boxSizing:"border-box",background:white};
-const label={display:"block",fontSize:12.5,fontWeight:600,color:gray700,marginBottom:5};
-const fg={marginBottom:16};
-const overlay={position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:16};
-const mbox={background:white,borderRadius:14,padding:"24px 28px",width:"100%",maxWidth:500,boxShadow:"0 8px 40px rgba(0,0,0,0.2)",maxHeight:"90vh",overflowY:"auto"};
-
-function LoginScreen({onLogin,onAbo}) {
-  const [email,setEmail]=useState("");
-  const [mdp,setMdp]=useState("");
-  const [err,setErr]=useState("");
-  const [loading,setLoading]=useState(false);
-  function go() {
-    if(!email||!mdp){setErr("Remplissez tous les champs.");return;}
-    setLoading(true);
-    setTimeout(()=>{
-      const c=COMPTES.find(c=>c.email.toLowerCase()===email.toLowerCase()&&c.motDePasse===mdp);
-      if(c){setErr("");onLogin(c);}else setErr("Email ou mot de passe incorrect.");
-      setLoading(false);
-    },600);
-  }
-  return (
-    <div style={{minHeight:"100vh",display:"flex",background:`linear-gradient(135deg,${navy} 0%,#1a3a6b 100%)`}}>
-      <div style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",padding:"50px 60px"}}>
-        <div style={{color:white,fontSize:26,fontWeight:800,marginBottom:8}}>🔒 FoyerSécure</div>
-        <div style={{color:"rgba(255,255,255,0.55)",fontSize:14,lineHeight:1.7,maxWidth:360,marginBottom:36}}>La plateforme de gestion des fugues pour le secteur social et médico-social.</div>
-        {[["🚨","Signalement en 30s"],["📊","Dashboard temps réel"],["📱","SMS + Email auto"],["🏢","Multi-établissement"]].map(([i,t])=>(
-          <div key={t} style={{display:"flex",alignItems:"center",gap:12,color:"rgba(255,255,255,0.8)",fontSize:13.5,marginBottom:14}}>
-            <div style={{width:34,height:34,borderRadius:9,background:"rgba(255,255,255,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{i}</div>
-            <span style={{fontWeight:600}}>{t}</span>
-          </div>
-        ))}
-        <button style={{...btn("ghost"),color:"rgba(255,255,255,0.7)",border:"1.5px solid rgba(255,255,255,0.25)",marginTop:18,fontSize:12.5}} onClick={onAbo}>Voir les tarifs & essai gratuit →</button>
-      </div>
-      <div style={{width:440,background:white,display:"flex",flexDirection:"column",justifyContent:"center",padding:"50px 44px",overflowY:"auto"}}>
-        <div style={{fontSize:21,fontWeight:800,color:navy,marginBottom:5}}>Connexion</div>
-        <div style={{fontSize:13,color:gray600,marginBottom:26}}>Accédez à l'espace de votre établissement</div>
-        {err&&<div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:8,padding:"9px 13px",color:"#DC2626",fontSize:12.5,marginBottom:14}}>⚠️ {err}</div>}
-        <div style={fg}><label style={label}>Email</label><input style={input} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="votre@email.fr" onKeyDown={e=>e.key==="Enter"&&go()} /></div>
-        <div style={fg}><label style={label}>Mot de passe</label><input style={input} type="password" value={mdp} onChange={e=>setMdp(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&go()} /></div>
-        <button style={{...btn("primary"),width:"100%",justifyContent:"center",padding:"11px",fontSize:14}} onClick={go} disabled={loading}>{loading?"Connexion…":"Se connecter →"}</button>
-        <div style={{marginTop:22,background:gray100,borderRadius:9,padding:"13px 14px"}}>
-          <div style={{fontSize:10.5,fontWeight:700,color:gray700,marginBottom:9,textTransform:"uppercase",letterSpacing:0.5}}>Comptes démo</div>
-          {COMPTES.map(c=>(
-            <div key={c.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${gray200}`,cursor:"pointer"}} onClick={()=>{setEmail(c.email);setMdp(c.motDePasse);setErr("");}}>
-              <div><div style={{fontSize:12.5,fontWeight:600,color:gray700}}>{c.nom}</div><div style={{fontSize:11,color:gray400}}>{c.email}</div></div>
-              <span style={{fontSize:11,color:gray400,fontFamily:"monospace"}}>{c.motDePasse}</span>
-            </div>
-          ))}
-          <div style={{fontSize:11,color:gray400,marginTop:7}}>Cliquez pour remplir</div>
-        </div>
-      </div>
-    </div>
-  );
+function SB(s){
+  const m={en_cours:{bg:"#FEF3C7",c:"#D97706"},cloturee:{bg:"#D1FAE5",c:"#059669"},"envoyé":{bg:"#D1FAE5",c:"#059669"},echec:{bg:"#FEE2E2",c:"#DC2626"}};
+  const x=m[s]||{bg:"#F3F4F6",c:C.gray600};
+  return{background:x.bg,color:x.c,borderRadius:20,fontSize:11.5,fontWeight:700,padding:"3px 10px",whiteSpace:"nowrap"};
 }
 
-function PageAbo({onRetour}) {
+// ── PAGE ABONNEMENT ─────────────────────────────────────────────────
+function PageAbo({onRetour}){
   const [done,setDone]=useState(false);
   const [form,setForm]=useState({nom:"",email:"",foyer:""});
-  const [sel,setSel]=useState(null);
+  const [sel2,setSel2]=useState(null);
   const plans=[
-    {id:"starter",nom:"Starter",prix:160,highlight:false,features:["10 jeunes","Signalement illimité","Notifications Email","1 compte"]},
-    {id:"pro",nom:"Pro",prix:220,highlight:true,badge:"⭐ Populaire",features:["30 jeunes","SMS + Email auto","5 comptes","Export PDF"]},
-    {id:"multi",nom:"Multi-site",prix:380,highlight:false,features:["Illimité","Multi-établissements","API & intégrations","Account manager"]},
+    {id:"starter",nom:"Starter",prix:160,highlight:false,features:["10 jeunes","Signalement illimité","Notifications Email","1 compte éducateur","Support email"]},
+    {id:"pro",nom:"Pro",prix:220,highlight:true,badge:"⭐ Populaire",features:["30 jeunes","SMS + Email automatiques","5 comptes","Historique illimité","Export PDF","Support 7j/7"]},
+    {id:"multi",nom:"Multi-site",prix:380,highlight:false,features:["Jeunes illimités","Établissements illimités","Dashboard direction","API & intégrations","Account manager dédié"]},
   ];
-  if(done) return (
-    <div style={{minHeight:"100vh",background:bg,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+  if(done)return(
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
       <div style={{...card,textAlign:"center",maxWidth:420,padding:"44px 36px"}}>
         <div style={{fontSize:50,marginBottom:14}}>✅</div>
-        <div style={{fontSize:20,fontWeight:800,color:navy,marginBottom:10}}>Demande envoyée !</div>
-        <div style={{fontSize:13.5,color:gray600,marginBottom:22}}>Identifiants reçus sous 24h. 14 jours gratuits.</div>
-        <button style={btn("primary")} onClick={onRetour}>← Retour connexion</button>
+        <div style={{fontSize:20,fontWeight:800,color:C.navy,marginBottom:10}}>Demande envoyée !</div>
+        <div style={{fontSize:13.5,color:C.gray600,marginBottom:22,lineHeight:1.7}}>Identifiants reçus sous <strong>24h</strong>. 14 jours gratuits sans CB.</div>
+        <button style={B("primary")} onClick={onRetour}>← Retour connexion</button>
       </div>
     </div>
   );
-  return (
-    <div style={{minHeight:"100vh",background:bg,fontFamily:"-apple-system,system-ui,sans-serif"}}>
-      <div style={{background:navy,padding:"13px 32px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <span style={{color:white,fontWeight:800,fontSize:15}}>🔒 FoyerSécure</span>
-        <button style={{...btn("ghost"),color:white,border:"1.5px solid rgba(255,255,255,0.3)",fontSize:12}} onClick={onRetour}>← Connexion</button>
+  return(
+    <div style={{minHeight:"100vh",background:C.bg}}>
+      <div style={{background:C.navy,padding:"13px 32px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <span style={{color:C.white,fontWeight:800,fontSize:15}}>🔒 FoyerSécure</span>
+        <button style={{...B("ghost"),color:C.white,border:"1.5px solid rgba(255,255,255,0.3)",fontSize:12}} onClick={onRetour}>← Connexion</button>
       </div>
-      <div style={{maxWidth:960,margin:"0 auto",padding:"40px 20px"}}>
-        <div style={{background:`linear-gradient(135deg,${navy} 0%,#1a3a6b 100%)`,borderRadius:14,padding:"36px 40px",marginBottom:28,color:white,textAlign:"center"}}>
+      <div style={{maxWidth:980,margin:"0 auto",padding:"40px 20px"}}>
+        <div style={{background:`linear-gradient(135deg,${C.navy} 0%,#1a3a6b 100%)`,borderRadius:14,padding:"36px 40px",marginBottom:28,color:C.white,textAlign:"center"}}>
           <h1 style={{fontSize:28,fontWeight:900,margin:"0 0 10px"}}>Simple, transparent, sans engagement</h1>
-          <p style={{fontSize:14,color:"rgba(255,255,255,0.6)"}}>14 jours d'essai gratuit · Sans carte bancaire · Résiliation à tout moment</p>
+          <p style={{fontSize:14,color:"rgba(255,255,255,0.6)",marginBottom:16}}>14 jours d'essai gratuit · Sans carte bancaire · Résiliation à tout moment</p>
+          <div style={{display:"inline-flex",gap:8,background:"rgba(255,255,255,0.1)",borderRadius:30,padding:"7px 16px",fontSize:13}}>✅ Données hébergées en France · Conformité RGPD</div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:18,marginBottom:32}}>
           {plans.map(p=>(
-            <div key={p.id} style={{background:p.highlight?navy:white,borderRadius:14,padding:"26px 26px 30px",boxShadow:p.highlight?"0 4px 24px rgba(15,31,61,0.25)":"0 1px 6px rgba(15,31,61,0.08)",border:p.highlight?"none":`1.5px solid ${gray200}`,color:p.highlight?white:gray900,position:"relative"}}>
-              {p.badge&&<div style={{position:"absolute",top:-11,left:"50%",transform:"translateX(-50%)",background:amber,color:white,borderRadius:20,fontSize:11,fontWeight:700,padding:"2px 12px",whiteSpace:"nowrap"}}>{p.badge}</div>}
-              <div style={{fontSize:10.5,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:p.highlight?"rgba(255,255,255,0.4)":gray400,marginBottom:5}}>{p.nom}</div>
-              <div style={{fontSize:34,fontWeight:900,color:p.highlight?white:navy,lineHeight:1,marginBottom:4}}>{p.prix}€<span style={{fontSize:13,fontWeight:500,opacity:0.6}}>/mois</span></div>
+            <div key={p.id} style={{background:p.highlight?C.navy:C.white,borderRadius:14,padding:"26px 26px 30px",boxShadow:p.highlight?"0 4px 24px rgba(15,31,61,0.25)":"0 1px 6px rgba(15,31,61,0.08)",border:p.highlight?"none":`1.5px solid ${C.gray200}`,color:p.highlight?C.white:C.gray900,position:"relative"}}>
+              {p.badge&&<div style={{position:"absolute",top:-11,left:"50%",transform:"translateX(-50%)",background:C.amber,color:C.white,borderRadius:20,fontSize:11,fontWeight:700,padding:"2px 12px",whiteSpace:"nowrap"}}>{p.badge}</div>}
+              <div style={{fontSize:10.5,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:p.highlight?"rgba(255,255,255,0.4)":C.gray400,marginBottom:5}}>{p.nom}</div>
+              <div style={{fontSize:34,fontWeight:900,color:p.highlight?C.white:C.navy,lineHeight:1,marginBottom:4}}>{p.prix}€<span style={{fontSize:13,fontWeight:500,opacity:0.6}}>/mois</span></div>
               <div style={{background:p.highlight?"rgba(255,255,255,0.1)":"#F0FDF4",borderRadius:7,padding:"7px 11px",margin:"12px 0",fontSize:12,color:p.highlight?"#6EE7B7":"#059669",fontWeight:600}}>🎁 14 jours gratuits — sans CB</div>
-              {p.features.map(f=><div key={f} style={{display:"flex",gap:8,fontSize:13,color:p.highlight?"rgba(255,255,255,0.85)":gray700,marginBottom:8}}><span style={{color:p.highlight?"#6EE7B7":green,flexShrink:0}}>✓</span><span>{f}</span></div>)}
-              <button style={{...btn("primary"),width:"100%",justifyContent:"center",marginTop:18,background:p.highlight?red:navy}} onClick={()=>setSel(p)}>Démarrer l'essai gratuit</button>
+              {p.features.map(f=><div key={f} style={{display:"flex",gap:8,fontSize:13,color:p.highlight?"rgba(255,255,255,0.85)":C.gray700,marginBottom:8}}><span style={{color:p.highlight?"#6EE7B7":C.green,flexShrink:0}}>✓</span><span>{f}</span></div>)}
+              <button style={{...B("primary"),width:"100%",justifyContent:"center",marginTop:18,background:p.highlight?C.red:C.navy}} onClick={()=>setSel2(p)}>Démarrer l'essai gratuit</button>
+            </div>
+          ))}
+        </div>
+        <div style={{...card,maxWidth:620,margin:"0 auto"}}>
+          <h3 style={{margin:"0 0 18px",fontSize:16,fontWeight:700,color:C.navy}}>Questions fréquentes</h3>
+          {[["L'essai est-il vraiment gratuit ?","Oui, 14 jours complets sans carte bancaire. Vous décidez à la fin."],["Puis-je résilier à tout moment ?","Oui, sans frais, en un clic depuis votre espace."],["Données sécurisées ?","Hébergement OVH France, chiffrement TLS, conformité RGPD totale."]].map(([q,r])=>(
+            <div key={q} style={{borderBottom:`1px solid ${C.gray200}`,paddingBottom:12,marginBottom:12}}>
+              <div style={{fontWeight:700,fontSize:13.5,marginBottom:4,color:C.navy}}>❓ {q}</div>
+              <div style={{fontSize:13,color:C.gray600}}>{r}</div>
             </div>
           ))}
         </div>
       </div>
-      {sel&&(
-        <div style={overlay} onClick={()=>setSel(null)}>
+      {sel2&&(
+        <div style={overlay} onClick={()=>setSel2(null)}>
           <div style={mbox} onClick={e=>e.stopPropagation()}>
-            <h2 style={{fontSize:17,fontWeight:700,marginBottom:18,color:navy}}>🎁 Essai gratuit — {sel.nom} ({sel.prix}€/mois)</h2>
+            <h2 style={{fontSize:17,fontWeight:700,marginBottom:18,color:C.navy}}>🎁 Essai gratuit — {sel2.nom} ({sel2.prix}€/mois)</h2>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <div style={fg}><label style={label}>Nom *</label><input style={input} value={form.nom} onChange={e=>setForm({...form,nom:e.target.value})} placeholder="Prénom Nom" /></div>
-              <div style={fg}><label style={label}>Email *</label><input style={input} type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="email@foyer.fr" /></div>
+              <div style={fg}><label style={lbl}>Nom responsable *</label><input style={inp} value={form.nom} onChange={e=>setForm({...form,nom:e.target.value})} placeholder="Prénom Nom"/></div>
+              <div style={fg}><label style={lbl}>Email *</label><input style={inp} type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="email@foyer.fr"/></div>
             </div>
-            <div style={fg}><label style={label}>Établissement *</label><input style={input} value={form.foyer} onChange={e=>setForm({...form,foyer:e.target.value})} placeholder="Foyer / MECS…" /></div>
-            <div style={{background:"#F0FDF4",borderRadius:8,padding:"9px 13px",fontSize:12.5,color:"#059669",marginBottom:8}}>✅ Identifiants envoyés sous 24h. Aucune CB requise.</div>
+            <div style={fg}><label style={lbl}>Établissement *</label><input style={inp} value={form.foyer} onChange={e=>setForm({...form,foyer:e.target.value})} placeholder="Foyer / MECS…"/></div>
+            <div style={{background:"#F0FDF4",borderRadius:8,padding:"9px 13px",fontSize:12.5,color:"#059669",marginBottom:4}}>✅ Identifiants envoyés sous 24h. Aucune CB requise.</div>
             <div style={{display:"flex",gap:10,marginTop:16,justifyContent:"flex-end"}}>
-              <button style={btn("ghost")} onClick={()=>setSel(null)}>Annuler</button>
-              <button style={btn("primary")} onClick={()=>{if(form.nom&&form.email&&form.foyer){setSel(null);setDone(true);}}}>Démarrer →</button>
+              <button style={B("ghost")} onClick={()=>setSel2(null)}>Annuler</button>
+              <button style={B("primary")} onClick={()=>{if(form.nom&&form.email&&form.foyer){setSel2(null);setDone(true);}}}>Démarrer →</button>
             </div>
           </div>
         </div>
@@ -212,7 +210,232 @@ function PageAbo({onRetour}) {
   );
 }
 
-function App() {
+// ── LOGIN ───────────────────────────────────────────────────────────
+function Login({onLogin,onAbo}){
+  const [email,setEmail]=useState("");
+  const [mdp,setMdp]=useState("");
+  const [err,setErr]=useState("");
+  const [loading,setLoading]=useState(false);
+  function go(){
+    if(!email||!mdp){setErr("Remplissez tous les champs.");return;}
+    setLoading(true);
+    setTimeout(()=>{
+      if(email.toLowerCase()===SUPER_ADMIN.email&&mdp===SUPER_ADMIN.motDePasse){setErr("");onLogin(SUPER_ADMIN);setLoading(false);return;}
+      const c=INIT_COMPTES.find(c=>c.email.toLowerCase()===email.toLowerCase()&&c.motDePasse===mdp);
+      if(c){setErr("");onLogin(c);}else setErr("Email ou mot de passe incorrect.");
+      setLoading(false);
+    },600);
+  }
+  const allComptes=[...INIT_COMPTES,SUPER_ADMIN];
+  return(
+    <div style={{minHeight:"100vh",display:"flex",background:`linear-gradient(135deg,${C.navy} 0%,#1a3a6b 100%)`}}>
+      <div style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",padding:"50px 60px"}}>
+        <div style={{color:C.white,fontSize:26,fontWeight:800,marginBottom:8}}>🔒 FoyerSécure</div>
+        <div style={{color:"rgba(255,255,255,0.55)",fontSize:14,lineHeight:1.7,maxWidth:360,marginBottom:36}}>La plateforme de gestion des fugues pour le secteur social et médico-social.</div>
+        {[["🚨","Signalement en 30s"],["📊","Dashboard temps réel"],["📱","SMS + Email auto"],["🏢","Multi-établissement"],["📈","Rapports mensuels auto"],["👤","Historique par éducateur"]].map(([i,t])=>(
+          <div key={t} style={{display:"flex",alignItems:"center",gap:12,color:"rgba(255,255,255,0.8)",fontSize:13.5,marginBottom:12}}>
+            <div style={{width:32,height:32,borderRadius:9,background:"rgba(255,255,255,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>{i}</div>
+            <span style={{fontWeight:600}}>{t}</span>
+          </div>
+        ))}
+        <button style={{...B("ghost"),color:"rgba(255,255,255,0.7)",border:"1.5px solid rgba(255,255,255,0.25)",marginTop:18,fontSize:12.5}} onClick={onAbo}>Voir les tarifs & essai gratuit →</button>
+      </div>
+      <div style={{width:460,background:C.white,display:"flex",flexDirection:"column",justifyContent:"center",padding:"50px 44px",overflowY:"auto"}}>
+        <div style={{fontSize:21,fontWeight:800,color:C.navy,marginBottom:5}}>Connexion</div>
+        <div style={{fontSize:13,color:C.gray600,marginBottom:26}}>Accédez à l'espace de votre établissement</div>
+        {err&&<div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:8,padding:"9px 13px",color:"#DC2626",fontSize:12.5,marginBottom:14}}>⚠️ {err}</div>}
+        <div style={fg}><label style={lbl}>Email</label><input style={inp} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="votre@email.fr" onKeyDown={e=>e.key==="Enter"&&go()}/></div>
+        <div style={fg}><label style={lbl}>Mot de passe</label><input style={inp} type="password" value={mdp} onChange={e=>setMdp(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&go()}/></div>
+        <button style={{...B("primary"),width:"100%",justifyContent:"center",padding:"11px",fontSize:14}} onClick={go} disabled={loading}>{loading?"Connexion…":"Se connecter →"}</button>
+        <div style={{marginTop:22,background:C.gray100,borderRadius:9,padding:"13px 14px"}}>
+          <div style={{fontSize:10.5,fontWeight:700,color:C.gray700,marginBottom:9,textTransform:"uppercase",letterSpacing:0.5}}>Comptes démo</div>
+          {allComptes.map(c=>(
+            <div key={c.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${C.gray200}`,cursor:"pointer"}} onClick={()=>{setEmail(c.email);setMdp(c.motDePasse);setErr("");}}>
+              <div>
+                <div style={{fontSize:12.5,fontWeight:600,color:C.gray700}}>{c.nom}</div>
+                <div style={{fontSize:11,color:C.gray400}}>{c.email}</div>
+              </div>
+              <div style={{display:"flex",gap:5,alignItems:"center"}}>
+                <span style={{background:c.role==="superadmin"?"#FEF3C7":c.role==="admin"?"#EDE9FE":"#DBEAFE",color:c.role==="superadmin"?"#D97706":c.role==="admin"?C.purple:C.blue,borderRadius:6,fontSize:10,fontWeight:700,padding:"2px 6px"}}>{c.role}</span>
+                <span style={{fontSize:11,color:C.gray400,fontFamily:"monospace"}}>{c.motDePasse}</span>
+              </div>
+            </div>
+          ))}
+          <div style={{fontSize:11,color:C.gray400,marginTop:7}}>Cliquez pour remplir</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── DASHBOARD DIRECTION (superadmin) ────────────────────────────────
+function DashboardDirection({onLogout}){
+  const totalFugues=INIT_COMPTES.reduce((s,c)=>s+c.fugues.length,0);
+  const totalEnCours=INIT_COMPTES.reduce((s,c)=>s+c.fugues.filter(f=>f.statut==="en_cours").length,0);
+  const totalJeunes=INIT_COMPTES.reduce((s,c)=>s+c.jeunes.length,0);
+  const totalEtab=INIT_COMPTES.length;
+  return(
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"-apple-system,system-ui,sans-serif"}}>
+      <div style={{background:C.navy,padding:"14px 32px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div>
+          <span style={{color:C.white,fontWeight:800,fontSize:16}}>🔒 FoyerSécure</span>
+          <span style={{color:"rgba(255,255,255,0.4)",fontSize:12,marginLeft:12}}>Dashboard Direction</span>
+        </div>
+        <button style={{...B("ghost"),color:"rgba(255,255,255,0.7)",border:"1.5px solid rgba(255,255,255,0.3)",fontSize:12}} onClick={onLogout}>⬅ Déconnexion</button>
+      </div>
+      <div style={{maxWidth:1100,margin:"0 auto",padding:"32px 24px"}}>
+        <h1 style={{fontSize:22,fontWeight:800,color:C.navy,marginBottom:24}}>Vue globale — {totalEtab} établissements</h1>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16,marginBottom:28}}>
+          {[[C.red,totalEnCours,"Fugues en cours"],[C.amber,totalFugues,"Fugues totales"],[C.blue,totalJeunes,"Jeunes accompagnés"],[C.green,totalEtab,"Établissements"]].map(([c,v,l])=>(
+            <div key={l} style={{background:C.white,borderRadius:12,padding:"20px 22px",boxShadow:"0 1px 4px rgba(15,31,61,0.07)",borderLeft:`4px solid ${c}`}}>
+              <div style={{fontSize:32,fontWeight:800,color:c,lineHeight:1,marginBottom:4}}>{v}</div>
+              <div style={{fontSize:12,color:C.gray600}}>{l}</div>
+            </div>
+          ))}
+        </div>
+        {totalEnCours>0&&(
+          <div style={{background:"#FFF3CD",border:"1px solid #FFC107",borderRadius:10,padding:"14px 18px",marginBottom:24}}>
+            <div style={{fontWeight:700,fontSize:14,marginBottom:8}}>🚨 Fugues en cours dans le réseau</div>
+            {INIT_COMPTES.map(c=>c.fugues.filter(f=>f.statut==="en_cours").map(f=>{
+              const j=c.jeunes.find(j=>j.id===f.jeuneId);
+              const h=Math.floor((Date.now()-new Date(f.dateDepart))/3600000);
+              return(
+                <div key={f.id} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderBottom:`1px solid rgba(0,0,0,0.06)`,fontSize:13.5}}>
+                  <span style={{background:C.red,color:C.white,borderRadius:6,fontSize:11,fontWeight:700,padding:"2px 8px"}}>{c.nom}</span>
+                  <strong>{j?.prenom} {j?.nom}</strong> — {h}h en cours · {f.lieu}
+                  {f.signalementPolicier&&<span style={{background:C.red,color:C.white,borderRadius:4,fontSize:11,padding:"1px 6px",fontWeight:700}}>Police</span>}
+                </div>
+              );
+            }))}
+          </div>
+        )}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24}}>
+          {INIT_COMPTES.map(c=>{
+            const ec=c.fugues.filter(f=>f.statut==="en_cours").length;
+            const total=c.fugues.length;
+            const tauxRetour=c.fugues.filter(f=>f.statut==="cloturee"&&f.dateRetour&&(new Date(f.dateRetour)-new Date(f.dateDepart))<86400000).length;
+            return(
+              <div key={c.id} style={{...card,borderTop:`3px solid ${ec>0?C.red:C.green}`}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:15,color:C.navy}}>{c.nom}</div>
+                    <div style={{fontSize:12,color:C.gray600}}>📍 {c.ville} · {c.jeunes.length} jeunes</div>
+                  </div>
+                  <span style={SB(ec>0?"en_cours":"cloturee")}>{ec>0?`${ec} en fugue`:"Stable"}</span>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+                  {[[C.amber,total,"Fugues"],[C.green,tauxRetour,"Ret. <24h"],[C.blue,c.educateurs.length,"Éduc."]].map(([col,val,lab])=>(
+                    <div key={lab} style={{background:C.gray100,borderRadius:8,padding:"10px 12px",textAlign:"center"}}>
+                      <div style={{fontSize:22,fontWeight:800,color:col}}>{val}</div>
+                      <div style={{fontSize:11,color:C.gray600}}>{lab}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={card}>
+          <h3 style={{margin:"0 0 16px",fontSize:15,fontWeight:700,color:C.navy}}>Comparatif réseau — Fugues par établissement</h3>
+          <div style={{display:"flex",alignItems:"flex-end",gap:24,height:120,padding:"0 8px"}}>
+            {INIT_COMPTES.map(c=>{
+              const n=c.fugues.length;
+              const max=Math.max(...INIT_COMPTES.map(x=>x.fugues.length),1);
+              const ec=c.fugues.filter(f=>f.statut==="en_cours").length;
+              return(
+                <div key={c.id} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+                  <div style={{fontSize:12,fontWeight:700,color:C.navy}}>{n}</div>
+                  <div style={{width:"100%",background:ec>0?C.red:C.navy,borderRadius:"4px 4px 0 0",height:`${(n/max)*80}px`,minHeight:8,position:"relative"}}>
+                    {ec>0&&<div style={{position:"absolute",top:-6,right:-6,width:14,height:14,borderRadius:"50%",background:C.red,border:"2px solid white",fontSize:9,color:"white",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{ec}</div>}
+                  </div>
+                  <div style={{fontSize:11,color:C.gray600,textAlign:"center",lineHeight:1.3}}>{c.nom.replace("Foyer ","").replace("MECS ","")}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── NOTIF PANEL ─────────────────────────────────────────────────────
+function NotifPanel({fugue,jeune,contacts,onClose}){
+  const [sent,setSent]=useState(fugue.notifications||[]);
+  const [sending,setSending]=useState(false);
+  const dests=[
+    {k:"ase",l:"ASE",i:"🏛",info:contacts.ase},
+    {k:"parents",l:"Parents",i:"👨‍👩‍👦",info:{nom:`Famille ${jeune?.nom}`,email:jeune?.parentEmail,tel:jeune?.parentTel}},
+    {k:"astreinte",l:"Astreinte",i:"🌙",info:contacts.astreinte},
+    {k:"police",l:"Police",i:"🚔",info:contacts.police},
+  ];
+  function sendAll(){
+    setSending(true);
+    setTimeout(()=>{
+      const h=new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+      setSent(dests.flatMap(d=>[{dest:d.l,type:"SMS",heure:h,statut:"envoyé"},{dest:d.l,type:"Email",heure:h,statut:"envoyé"}]));
+      setSending(false);
+    },1400);
+  }
+  function sendOne(dest,type){
+    setSending(true);
+    setTimeout(()=>{
+      const h=new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+      setSent(p=>[...p,{dest,type,heure:h,statut:"envoyé"}]);
+      setSending(false);
+    },800);
+  }
+  const isSent=(dest,type)=>sent.some(n=>n.dest===dest&&n.type===type);
+  return(
+    <div style={overlay} onClick={onClose}>
+      <div style={{...mbox,maxWidth:540}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
+          <h2 style={{fontSize:17,fontWeight:700,color:C.navy}}>📣 Notifications — {jeune?.prenom} {jeune?.nom}</h2>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.gray400}}>✕</button>
+        </div>
+        <p style={{fontSize:12.5,color:C.gray600,marginBottom:16}}>Départ {fDate(fugue.dateDepart)} · {fugue.lieu}</p>
+        {sent.length===0
+          ?<div style={{background:"#FFF7ED",border:"1px solid #FED7AA",borderRadius:9,padding:"11px 14px",marginBottom:14,fontSize:13,color:"#C2410C"}}>⚠️ Aucune notification envoyée.</div>
+          :<div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:9,padding:"9px 13px",marginBottom:14,fontSize:12.5,color:"#059669",fontWeight:600}}>✅ {sent.length} notification{sent.length>1?"s":""} envoyée{sent.length>1?"s":""}</div>
+        }
+        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
+          <button style={B("danger")} onClick={sendAll} disabled={sending}>{sending?"Envoi…":"📣 Alerter tous (SMS + Email)"}</button>
+        </div>
+        {dests.map(d=>(
+          <div key={d.k} style={{background:C.bg,borderRadius:10,padding:"12px 14px",border:`1px solid ${C.gray200}`,marginBottom:9}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+              <div style={{display:"flex",alignItems:"center",gap:9}}>
+                <span style={{fontSize:18}}>{d.i}</span>
+                <div><div style={{fontWeight:700,fontSize:13.5}}>{d.l}</div><div style={{fontSize:11.5,color:C.gray600}}>{d.info?.nom}</div></div>
+              </div>
+              <div style={{display:"flex",gap:5}}>
+                {["SMS","Email"].map(type=>isSent(d.l,type)
+                  ?<span key={type} style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,fontWeight:600,padding:"2px 7px",borderRadius:10,background:"#D1FAE5",color:"#059669",marginRight:4}}>✓ {type}</span>
+                  :<button key={type} style={B("notif")} onClick={()=>sendOne(d.l,type)} disabled={sending}>{type==="SMS"?"📱":"✉️"} {type}</button>
+                )}
+              </div>
+            </div>
+            <div style={{fontSize:11.5,color:C.gray600}}>📱 {d.info?.tel} · ✉️ {d.info?.email}</div>
+          </div>
+        ))}
+        <div style={{marginTop:16,background:C.bg,borderRadius:9,padding:"11px 13px"}}>
+          <div style={{fontSize:11.5,fontWeight:700,color:C.gray700,marginBottom:7}}>Message envoyé automatiquement</div>
+          <div style={{fontSize:12,color:C.gray600,fontStyle:"italic",lineHeight:1.6,background:C.white,borderRadius:7,padding:"9px 11px",border:`1px solid ${C.gray200}`}}>
+            🚨 ALERTE FUGUE — {jeune?.prenom} {jeune?.nom} ({jeune?.age} ans, ch. {jeune?.chambre})<br/>
+            Date : {fDate(fugue.dateDepart)} · Lieu : {fugue.lieu} · Motif : {fugue.motif}<br/>
+            Merci de nous contacter immédiatement.
+          </div>
+        </div>
+        <div style={{display:"flex",justifyContent:"flex-end",marginTop:16}}>
+          <button style={B("ghost")} onClick={onClose}>Fermer</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── APP PRINCIPALE ───────────────────────────────────────────────────
+function App(){
   const [appPage,setAppPage]=useState("login");
   const [session,setSession]=useState(null);
   const [data,setData]=useState({});
@@ -222,83 +445,145 @@ function App() {
   const [form,setForm]=useState({});
   const [notifF,setNotifF]=useState(null);
   const [toast,setToast]=useState(null);
+  const [rapportMois,setRapportMois]=useState(null);
 
-  function showToast(msg,color=green){setToast({msg,color});setTimeout(()=>setToast(null),3000);}
+  // Charger données depuis localStorage au démarrage
+  useEffect(()=>{
+    const saved=DB.get("allData");
+    if(saved)setData(saved);
+    else{
+      const init={};
+      INIT_COMPTES.forEach(c=>{init[c.id]={jeunes:c.jeunes,fugues:c.fugues};});
+      setData(init);
+    }
+  },[]);
+
+  // Sauvegarder automatiquement
+  useEffect(()=>{
+    if(Object.keys(data).length>0)DB.set("allData",data);
+  },[data]);
+
+  function showToast(msg,color=C.green){setToast({msg,color});setTimeout(()=>setToast(null),3000);}
 
   function login(c){
     setSession(c);
-    setData(p=>({...p,[c.id]:{jeunes:c.jeunes,fugues:c.fugues}}));
+    if(c.role!=="superadmin"){
+      setData(p=>{
+        const saved=p[c.id];
+        if(!saved)return{...p,[c.id]:{jeunes:c.jeunes,fugues:c.fugues}};
+        return p;
+      });
+    }
     setPage("dashboard");setAppPage("app");
   }
 
-  if(appPage==="abo") return <PageAbo onRetour={()=>setAppPage("login")} />;
-  if(appPage==="login") return <LoginScreen onLogin={login} onAbo={()=>setAppPage("abo")} />;
+  if(appPage==="abo")return<PageAbo onRetour={()=>setAppPage("login")}/>;
+  if(appPage==="login")return<Login onLogin={login} onAbo={()=>setAppPage("abo")}/>;
+  if(session?.role==="superadmin")return<DashboardDirection onLogout={()=>{setSession(null);setAppPage("login");}}/>;
 
   const fid=session.id;
   const jeunes=data[fid]?.jeunes||[];
   const fugues=data[fid]?.fugues||[];
+  const educateurs=session.educateurs||[];
   const contacts=session.contacts;
 
-  function setFugues(fn){setData(p=>({...p,[fid]:{...p[fid],fugues:typeof fn==="function"?fn(p[fid].fugues):fn}}));}
-  function setJeunes(fn){setData(p=>({...p,[fid]:{...p[fid],jeunes:typeof fn==="function"?fn(p[fid].jeunes):fn}}));}
+  function setFugues(fn){setData(p=>{const nf=typeof fn==="function"?fn(p[fid]?.fugues||[]):fn;return{...p,[fid]:{...p[fid],fugues:nf}};});}
+  function setJeunes(fn){setData(p=>{const nj=typeof fn==="function"?fn(p[fid]?.jeunes||[]):fn;return{...p,[fid]:{...p[fid],jeunes:nj}};});}
 
   const fuguesEC=fugues.filter(f=>f.statut==="en_cours");
   function getJ(id){return jeunes.find(j=>j.id===id);}
   function getFJ(id){return fugues.filter(f=>f.jeuneId===id).sort((a,b)=>new Date(b.dateDepart)-new Date(a.dateDepart));}
-
   function closeM(){setModal(null);setForm({});}
+
+  // Générer rapport mensuel
+  function genererRapport(moisIdx,annee){
+    const fuguesMois=fugues.filter(f=>{const d=new Date(f.dateDepart);return d.getMonth()===moisIdx&&d.getFullYear()===annee;});
+    const retours=fuguesMois.filter(f=>f.dateRetour);
+    const durees=retours.map(f=>(new Date(f.dateRetour)-new Date(f.dateDepart))/3600000);
+    const moyDuree=durees.length?(durees.reduce((a,b)=>a+b,0)/durees.length).toFixed(1):0;
+    const parMotif={};MOTIFS.forEach(m=>{parMotif[m]=fuguesMois.filter(f=>f.motif===m).length;});
+    const parEduc={};fuguesMois.forEach(f=>{if(f.educateurNom){parEduc[f.educateurNom]=(parEduc[f.educateurNom]||0)+1;}});
+    return{mois:MOIS_LABELS[moisIdx],annee,total:fuguesMois.length,enCours:fuguesMois.filter(f=>f.statut==="en_cours").length,cloturees:retours.length,moyDuree,signalements:fuguesMois.filter(f=>f.signalementPolicier).length,parMotif,parEduc,fugues:fuguesMois};
+  }
 
   const navItems=[
     {key:"dashboard",label:"Tableau de bord",icon:"📊",badge:fuguesEC.length||null},
     {key:"signaler",label:"Signaler une fugue",icon:"🚨"},
     {key:"jeunes",label:"Suivi par jeune",icon:"👥"},
     {key:"stats",label:"Statistiques",icon:"📈"},
+    {key:"rapport",label:"Rapport mensuel",icon:"📋"},
+    {key:"educateurs",label:"Historique éduc.",icon:"👤"},
     {key:"notifs",label:"Notifications",icon:"📣"},
   ];
 
-  // DASHBOARD
-  function Dashboard() {
-    return (
+  // ── DASHBOARD ──────────────────────────────────────────────────────
+  function Dashboard(){
+    return(
       <div>
         {fuguesEC.map(f=>{
           const j=getJ(f.jeuneId);
           const h=Math.floor((Date.now()-new Date(f.dateDepart))/3600000);
-          return (
-            <div key={f.id} style={{background:"#FFF3CD",border:"1px solid #FFC107",borderRadius:10,padding:"11px 16px",marginBottom:13,display:"flex",alignItems:"center",gap:11,fontSize:13}}>
+          return(
+            <div key={f.id} style={{background:"#FFF3CD",border:"1px solid #FFC107",borderRadius:10,padding:"11px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:11,fontSize:13}}>
               <span style={{fontSize:17}}>🚨</span>
-              <div style={{flex:1}}><strong>{j?.prenom} {j?.nom}</strong> — en fugue depuis <strong>{h}h</strong></div>
-              <button onClick={()=>setNotifF(f)} style={btn("notif")}>📣</button>
-              <button onClick={()=>{setModal({type:"retour",fid:f.id});setForm({dateRetour:nowISO(),notes:f.notes});}} style={btn("success")}>✓ Retour</button>
+              <div style={{flex:1}}><strong>{j?.prenom} {j?.nom}</strong> — en fugue depuis <strong>{h}h</strong> · {f.lieu}{f.educateurNom&&<span style={{color:C.gray600,fontSize:12}}> · Signalé par {f.educateurNom}</span>}</div>
+              <button onClick={()=>setNotifF(f)} style={B("notif")}>📣</button>
+              <button onClick={()=>{setModal({type:"retour",fid:f.id});setForm({dateRetour:nowISO(),notes:f.notes});}} style={B("success")}>✓ Retour</button>
             </div>
           );
         })}
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:22}}>
-          {[[red,fuguesEC.length,"En cours"],[amber,fugues.length,"Fugues totales"],[green,fugues.filter(f=>f.statut==="cloturee"&&f.dateRetour&&(new Date(f.dateRetour)-new Date(f.dateDepart))<86400000).length,"Retours < 24h"],[blue,jeunes.filter(j=>!fugues.map(f=>f.jeuneId).includes(j.id)).length,"Sans fugue"]].map(([c,v,l])=>(
-            <div key={l} style={{background:white,borderRadius:12,padding:"18px 20px",boxShadow:"0 1px 4px rgba(15,31,61,0.07)",borderLeft:`4px solid ${c}`}}>
+          {[[C.red,fuguesEC.length,"En cours"],[C.amber,fugues.length,"Fugues totales"],[C.green,fugues.filter(f=>f.statut==="cloturee"&&f.dateRetour&&(new Date(f.dateRetour)-new Date(f.dateDepart))<86400000).length,"Retours < 24h"],[C.blue,jeunes.length,"Jeunes suivis"]].map(([c,v,l])=>(
+            <div key={l} style={{background:C.white,borderRadius:12,padding:"18px 20px",boxShadow:"0 1px 4px rgba(15,31,61,0.07)",borderLeft:`4px solid ${c}`}}>
               <div style={{fontSize:30,fontWeight:800,color:c,lineHeight:1,marginBottom:4}}>{v}</div>
-              <div style={{fontSize:11.5,color:gray600}}>{l}</div>
+              <div style={{fontSize:11.5,color:C.gray600}}>{l}</div>
             </div>
           ))}
         </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18,marginBottom:22}}>
+          <div style={card}>
+            <h3 style={{margin:"0 0 14px",fontSize:14,fontWeight:700,color:C.navy}}>Jeunes en fugue</h3>
+            {fuguesEC.length===0?<p style={{color:C.gray400,fontSize:13}}>✅ Aucune fugue en cours.</p>:fuguesEC.map(f=>{
+              const j=getJ(f.jeuneId);const h=Math.floor((Date.now()-new Date(f.dateDepart))/3600000);
+              return(<div key={f.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 0",borderBottom:`1px solid ${C.gray100}`}}>
+                <div><div style={{fontWeight:600,fontSize:13.5}}>{j?.prenom} {j?.nom}</div><div style={{fontSize:11.5,color:C.gray600}}>Ch.{j?.chambre} · {h}h · {f.educateurNom}</div></div>
+                <div style={{display:"flex",gap:5}}>
+                  <button onClick={()=>setNotifF(f)} style={B("notif")}>📣</button>
+                  <button onClick={()=>{setModal({type:"retour",fid:f.id});setForm({dateRetour:nowISO(),notes:f.notes});}} style={B("success")}>✓</button>
+                </div>
+              </div>);
+            })}
+          </div>
+          <div style={card}>
+            <h3 style={{margin:"0 0 14px",fontSize:14,fontWeight:700,color:C.navy}}>Motifs fréquents</h3>
+            {MOTIFS.map(m=>{const n=fugues.filter(f=>f.motif===m).length;if(!n)return null;return(
+              <div key={m} style={{marginBottom:9}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:12.5,marginBottom:3}}><span>{m}</span><span style={{fontWeight:700}}>{n}</span></div>
+                <div style={{height:5,background:C.gray100,borderRadius:3}}><div style={{height:5,background:C.navy,borderRadius:3,width:`${(n/fugues.length)*100}%`}}/></div>
+              </div>
+            );})}
+          </div>
+        </div>
         <div style={card}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-            <h3 style={{margin:0,fontSize:14,fontWeight:700,color:navy}}>Dernières fugues</h3>
-            <button onClick={()=>setPage("signaler")} style={btn("primary")}>+ Signaler</button>
+            <h3 style={{margin:0,fontSize:14,fontWeight:700,color:C.navy}}>Dernières fugues</h3>
+            <button onClick={()=>setPage("signaler")} style={B("primary")}>+ Signaler</button>
           </div>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
-            <thead><tr>{["Jeune","Départ","Durée","Statut",""].map(h=><th key={h} style={{textAlign:"left",padding:"9px 13px",fontSize:11,fontWeight:700,color:gray600,textTransform:"uppercase",borderBottom:`2px solid ${gray100}`}}>{h}</th>)}</tr></thead>
+            <thead><tr>{["Jeune","Éducateur","Départ","Durée","Statut",""].map(h=><th key={h} style={{textAlign:"left",padding:"9px 13px",fontSize:11,fontWeight:700,color:C.gray600,textTransform:"uppercase",borderBottom:`2px solid ${C.gray100}`}}>{h}</th>)}</tr></thead>
             <tbody>
               {[...fugues].sort((a,b)=>new Date(b.dateDepart)-new Date(a.dateDepart)).slice(0,6).map(f=>{
                 const j=getJ(f.jeuneId);
-                return (
+                return(
                   <tr key={f.id}>
-                    <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${gray100}`}}><strong>{j?.prenom} {j?.nom}</strong></td>
-                    <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${gray100}`}}>{fDate(f.dateDepart)}</td>
-                    <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${gray100}`}}>{dureeH(f.dateDepart,f.dateRetour)||<span style={{color:red,fontWeight:600}}>En cours</span>}</td>
-                    <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${gray100}`}}><span style={sbadge(f.statut)}>{f.statut==="en_cours"?"En cours":"Clôturée"}</span></td>
-                    <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${gray100}`}}>
-                      <button onClick={()=>setNotifF(f)} style={btn("notif")}>📣</button>
-                      {f.statut==="en_cours"&&<button onClick={()=>{setModal({type:"retour",fid:f.id});setForm({dateRetour:nowISO(),notes:f.notes});}} style={{...btn("success"),marginLeft:6}}>Retour</button>}
+                    <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${C.gray100}`}}><strong>{j?.prenom} {j?.nom}</strong></td>
+                    <td style={{padding:"11px 13px",fontSize:12,borderBottom:`1px solid ${C.gray100}`,color:C.gray600}}>{f.educateurNom||"—"}</td>
+                    <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${C.gray100}`}}>{fDate(f.dateDepart)}</td>
+                    <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${C.gray100}`}}>{dureeH(f.dateDepart,f.dateRetour)||<span style={{color:C.red,fontWeight:600}}>En cours</span>}</td>
+                    <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${C.gray100}`}}><span style={SB(f.statut)}>{f.statut==="en_cours"?"En cours":"Clôturée"}</span></td>
+                    <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${C.gray100}`}}>
+                      <button onClick={()=>setNotifF(f)} style={B("notif")}>📣</button>
+                      {f.statut==="en_cours"&&<button onClick={()=>{setModal({type:"retour",fid:f.id});setForm({dateRetour:nowISO(),notes:f.notes});}} style={{...B("success"),marginLeft:6}}>Retour</button>}
                     </td>
                   </tr>
                 );
@@ -310,89 +595,100 @@ function App() {
     );
   }
 
-  // SIGNALER
-  function Signaler() {
-    const [lf,setLf]=useState({jeuneId:"",dateDepart:nowISO(),motif:"Inconnu",lieu:"Non identifié",signalementPolicier:false,notes:"",notifASE:true,notifParents:true,notifAstreinte:true,notifPolice:false});
+  // ── SIGNALER ────────────────────────────────────────────────────────
+  function Signaler(){
+    const [lf,setLf]=useState({jeuneId:"",educateurId:"",dateDepart:nowISO(),motif:"Inconnu",lieu:"Non identifié",signalementPolicier:false,notes:"",notifASE:true,notifParents:true,notifAstreinte:true,notifPolice:false});
     const [step,setStep]=useState(1);
     const [done,setDone]=useState(false);
     function submit(){
-      if(!lf.jeuneId)return;
+      if(!lf.jeuneId||!lf.educateurId)return;
       const j=getJ(parseInt(lf.jeuneId));
-      const nf={id:Date.now(),jeuneId:parseInt(lf.jeuneId),dateDepart:lf.dateDepart,dateRetour:null,motif:lf.motif,lieu:lf.lieu,signalementPolicier:!!lf.signalementPolicier,statut:"en_cours",notes:lf.notes||"",notifications:[]};
+      const educ=educateurs.find(e=>e.id===lf.educateurId);
+      const nf={id:Date.now(),jeuneId:parseInt(lf.jeuneId),educateurId:lf.educateurId,educateurNom:educ?.nom||"",dateDepart:lf.dateDepart,dateRetour:null,motif:lf.motif,lieu:lf.lieu,signalementPolicier:!!lf.signalementPolicier,statut:"en_cours",notes:lf.notes||"",notifications:[]};
       setFugues(p=>[...p,nf]);setDone(true);
-      showToast(`🚨 Fugue de ${j?.prenom} ${j?.nom} enregistrée`,red);
+      showToast(`🚨 Fugue de ${j?.prenom} ${j?.nom} enregistrée`,C.red);
       setTimeout(()=>setNotifF(nf),700);
     }
-    if(done) return (
+    if(done)return(
       <div style={{...card,maxWidth:480,margin:"0 auto",textAlign:"center",padding:"44px 36px"}}>
         <div style={{fontSize:50,marginBottom:14}}>✅</div>
-        <div style={{fontSize:19,fontWeight:800,color:navy,marginBottom:10}}>Fugue enregistrée !</div>
+        <div style={{fontSize:19,fontWeight:800,color:C.navy,marginBottom:10}}>Fugue enregistrée !</div>
         <div style={{display:"flex",gap:11,justifyContent:"center"}}>
-          <button style={btn("ghost")} onClick={()=>setPage("dashboard")}>← Dashboard</button>
-          <button style={btn("primary")} onClick={()=>setDone(false)}>+ Nouvelle fugue</button>
+          <button style={B("ghost")} onClick={()=>setPage("dashboard")}>← Dashboard</button>
+          <button style={B("primary")} onClick={()=>setDone(false)}>+ Nouvelle fugue</button>
         </div>
       </div>
     );
     const jS=lf.jeuneId?getJ(parseInt(lf.jeuneId)):null;
-    return (
+    return(
       <div style={{maxWidth:600,margin:"0 auto"}}>
         <div style={{display:"flex",alignItems:"center",marginBottom:24}}>
           {[["1","Jeune"],["2","Contexte"],["3","Notifications"]].map(([n,l],i)=>(
             <div key={n} style={{display:"flex",alignItems:"center",flex:1}}>
               <div style={{display:"flex",alignItems:"center",gap:7}}>
-                <div style={{width:26,height:26,borderRadius:"50%",background:step>=parseInt(n)?navy:gray200,color:step>=parseInt(n)?white:gray600,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700}}>{n}</div>
-                <span style={{fontSize:12.5,fontWeight:step===parseInt(n)?700:400,color:step>=parseInt(n)?navy:gray400}}>{l}</span>
+                <div style={{width:26,height:26,borderRadius:"50%",background:step>=parseInt(n)?C.navy:C.gray200,color:step>=parseInt(n)?C.white:C.gray600,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700}}>{n}</div>
+                <span style={{fontSize:12.5,fontWeight:step===parseInt(n)?700:400,color:step>=parseInt(n)?C.navy:C.gray400}}>{l}</span>
               </div>
-              {i<2&&<div style={{flex:1,height:2,background:step>parseInt(n)?navy:gray200,margin:"0 10px"}} />}
+              {i<2&&<div style={{flex:1,height:2,background:step>parseInt(n)?C.navy:C.gray200,margin:"0 10px"}}/>}
             </div>
           ))}
         </div>
         <div style={card}>
           {step===1&&(
             <>
-              <h3 style={{margin:"0 0 18px",fontSize:15,fontWeight:700,color:navy}}>Étape 1 — Jeune & départ</h3>
-              <div style={fg}><label style={label}>Jeune *</label>
-                <select style={select} value={lf.jeuneId} onChange={e=>setLf({...lf,jeuneId:e.target.value})}>
-                  <option value="">— Sélectionner —</option>
-                  {jeunes.map(j=><option key={j.id} value={j.id}>{j.prenom} {j.nom} ({j.age} ans)</option>)}
+              <h3 style={{margin:"0 0 18px",fontSize:15,fontWeight:700,color:C.navy}}>Étape 1 — Jeune & éducateur</h3>
+              <div style={fg}><label style={lbl}>Jeune concerné *</label>
+                <select style={sel} value={lf.jeuneId} onChange={e=>setLf({...lf,jeuneId:e.target.value})}>
+                  <option value="">— Sélectionner un jeune —</option>
+                  {jeunes.map(j=><option key={j.id} value={j.id}>{j.prenom} {j.nom} ({j.age} ans · Ch.{j.chambre})</option>)}
                 </select>
               </div>
-              {jS&&<div style={{background:"#EFF6FF",borderRadius:8,padding:"9px 13px",marginBottom:14,fontSize:12.5,color:"#1D4ED8"}}>👤 <strong>{jS.prenom} {jS.nom}</strong> · {jS.age} ans · Chambre {jS.chambre}</div>}
-              <div style={fg}><label style={label}>Date et heure *</label><input style={input} type="datetime-local" value={lf.dateDepart} onChange={e=>setLf({...lf,dateDepart:e.target.value})} /></div>
-              <div style={{display:"flex",justifyContent:"flex-end"}}><button style={btn("primary")} onClick={()=>lf.jeuneId&&setStep(2)}>Suivant →</button></div>
+              {jS&&<div style={{background:"#EFF6FF",borderRadius:8,padding:"9px 13px",marginBottom:14,fontSize:12.5,color:"#1D4ED8"}}>👤 <strong>{jS.prenom} {jS.nom}</strong> · {jS.age} ans · {getFJ(jS.id).length} fugue(s) antérieure(s)</div>}
+              <div style={fg}><label style={lbl}>Éducateur qui signale *</label>
+                <select style={sel} value={lf.educateurId} onChange={e=>setLf({...lf,educateurId:e.target.value})}>
+                  <option value="">— Sélectionner —</option>
+                  {educateurs.map(e=><option key={e.id} value={e.id}>{e.nom} — {e.poste}</option>)}
+                </select>
+              </div>
+              <div style={fg}><label style={lbl}>Date et heure de départ *</label><input style={inp} type="datetime-local" value={lf.dateDepart} onChange={e=>setLf({...lf,dateDepart:e.target.value})}/></div>
+              <div style={{display:"flex",justifyContent:"flex-end"}}><button style={B("primary")} onClick={()=>lf.jeuneId&&lf.educateurId&&setStep(2)}>Suivant →</button></div>
             </>
           )}
           {step===2&&(
             <>
-              <h3 style={{margin:"0 0 18px",fontSize:15,fontWeight:700,color:navy}}>Étape 2 — Contexte</h3>
+              <h3 style={{margin:"0 0 18px",fontSize:15,fontWeight:700,color:C.navy}}>Étape 2 — Contexte</h3>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                <div style={fg}><label style={label}>Motif</label><select style={select} value={lf.motif} onChange={e=>setLf({...lf,motif:e.target.value})}>{MOTIFS.map(m=><option key={m}>{m}</option>)}</select></div>
-                <div style={fg}><label style={label}>Lieu</label><select style={select} value={lf.lieu} onChange={e=>setLf({...lf,lieu:e.target.value})}>{LIEUX.map(l=><option key={l}>{l}</option>)}</select></div>
+                <div style={fg}><label style={lbl}>Motif supposé</label><select style={sel} value={lf.motif} onChange={e=>setLf({...lf,motif:e.target.value})}>{MOTIFS.map(m=><option key={m}>{m}</option>)}</select></div>
+                <div style={fg}><label style={lbl}>Lieu probable</label><select style={sel} value={lf.lieu} onChange={e=>setLf({...lf,lieu:e.target.value})}>{LIEUX.map(l=><option key={l}>{l}</option>)}</select></div>
               </div>
-              <div style={fg}><label style={{display:"flex",alignItems:"center",gap:9,cursor:"pointer",fontSize:13.5}}><input type="checkbox" checked={lf.signalementPolicier} onChange={e=>setLf({...lf,signalementPolicier:e.target.checked})} /> Signalement police effectué</label></div>
-              <div style={fg}><label style={label}>Notes</label><textarea style={{...input,resize:"vertical",minHeight:75}} value={lf.notes} onChange={e=>setLf({...lf,notes:e.target.value})} placeholder="Contexte, dernière localisation…" /></div>
+              <div style={fg}><label style={{display:"flex",alignItems:"center",gap:9,cursor:"pointer",fontSize:13.5}}><input type="checkbox" checked={lf.signalementPolicier} onChange={e=>setLf({...lf,signalementPolicier:e.target.checked})}/> Signalement effectué auprès de la police</label></div>
+              <div style={fg}><label style={lbl}>Notes</label><textarea style={{...inp,resize:"vertical",minHeight:75}} value={lf.notes} onChange={e=>setLf({...lf,notes:e.target.value})} placeholder="Contexte, dernière localisation, tenue…"/></div>
               <div style={{display:"flex",justifyContent:"space-between"}}>
-                <button style={btn("ghost")} onClick={()=>setStep(1)}>← Retour</button>
-                <button style={btn("primary")} onClick={()=>setStep(3)}>Suivant →</button>
+                <button style={B("ghost")} onClick={()=>setStep(1)}>← Retour</button>
+                <button style={B("primary")} onClick={()=>setStep(3)}>Suivant →</button>
               </div>
             </>
           )}
           {step===3&&(
             <>
-              <h3 style={{margin:"0 0 6px",fontSize:15,fontWeight:700,color:navy}}>Étape 3 — Notifications</h3>
-              <p style={{fontSize:12.5,color:gray600,marginBottom:18}}>Contacts alertés par <strong>SMS + Email</strong> automatiquement.</p>
+              <h3 style={{margin:"0 0 6px",fontSize:15,fontWeight:700,color:C.navy}}>Étape 3 — Notifications</h3>
+              <p style={{fontSize:12.5,color:C.gray600,marginBottom:18}}>Contacts alertés par <strong>SMS + Email</strong> automatiquement.</p>
               {[{k:"notifASE",l:"ASE",i:"🏛",info:contacts.ase},{k:"notifParents",l:"Parents",i:"👨‍👩‍👦",info:jS?{nom:`Famille ${jS.nom}`,email:jS.parentEmail,tel:jS.parentTel}:{}},{k:"notifAstreinte",l:"Astreinte",i:"🌙",info:contacts.astreinte},{k:"notifPolice",l:"Police",i:"🚔",info:contacts.police}].map(({k,l,i,info})=>(
-                <div key={k} style={{background:lf[k]?"#EFF6FF":bg,border:`1.5px solid ${lf[k]?"#93C5FD":gray200}`,borderRadius:9,padding:"13px 14px",marginBottom:9,cursor:"pointer"}} onClick={()=>setLf({...lf,[k]:!lf[k]})}>
+                <div key={k} style={{background:lf[k]?"#EFF6FF":C.bg,border:`1.5px solid ${lf[k]?"#93C5FD":C.gray200}`,borderRadius:9,padding:"13px 14px",marginBottom:9,cursor:"pointer"}} onClick={()=>setLf({...lf,[k]:!lf[k]})}>
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <input type="checkbox" checked={!!lf[k]} onChange={()=>{}} />
+                    <input type="checkbox" checked={!!lf[k]} onChange={()=>{}}/>
                     <span style={{fontSize:18}}>{i}</span>
-                    <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13.5,color:navy}}>{l}</div><div style={{fontSize:11.5,color:gray600}}>{info.nom} · {info.tel}</div></div>
+                    <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13.5,color:C.navy}}>{l}</div><div style={{fontSize:11.5,color:C.gray600}}>{info?.nom} · {info?.tel}</div></div>
+                    {lf[k]&&<div style={{display:"flex",gap:5}}>
+                      <span style={{fontSize:11,fontWeight:600,padding:"2px 7px",borderRadius:10,background:"#D1FAE5",color:"#059669"}}>📱 SMS</span>
+                      <span style={{fontSize:11,fontWeight:600,padding:"2px 7px",borderRadius:10,background:"#D1FAE5",color:"#059669"}}>✉️ Email</span>
+                    </div>}
                   </div>
                 </div>
               ))}
               <div style={{display:"flex",justifyContent:"space-between",marginTop:16}}>
-                <button style={btn("ghost")} onClick={()=>setStep(2)}>← Retour</button>
-                <button style={btn("danger")} onClick={submit}>🚨 Enregistrer & alerter</button>
+                <button style={B("ghost")} onClick={()=>setStep(2)}>← Retour</button>
+                <button style={B("danger")} onClick={submit}>🚨 Enregistrer & alerter</button>
               </div>
             </>
           )}
@@ -401,60 +697,235 @@ function App() {
     );
   }
 
-  // JEUNES
-  function Jeunes() {
-    return (
+  // ── RAPPORT MENSUEL ─────────────────────────────────────────────────
+  function RapportMensuel(){
+    const now=new Date();
+    const [moisIdx,setMoisIdx]=useState(now.getMonth());
+    const [annee,setAnnee]=useState(now.getFullYear());
+    const rapport=genererRapport(moisIdx,annee);
+    return(
+      <div>
+        <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:24}}>
+          <select style={{...sel,width:"auto",fontSize:14,fontWeight:600}} value={moisIdx} onChange={e=>setMoisIdx(parseInt(e.target.value))}>
+            {MOIS_LABELS.map((m,i)=><option key={i} value={i}>{m}</option>)}
+          </select>
+          <select style={{...sel,width:"auto",fontSize:14}} value={annee} onChange={e=>setAnnee(parseInt(e.target.value))}>
+            {[2024,2025,2026].map(a=><option key={a}>{a}</option>)}
+          </select>
+          <div style={{flex:1}}/>
+          <button style={B("sm")} onClick={()=>window.print()}>🖨️ Imprimer</button>
+        </div>
+
+        <div style={{...card,borderTop:`4px solid ${C.navy}`,marginBottom:20}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:C.gray400,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Rapport mensuel</div>
+              <h2 style={{fontSize:20,fontWeight:800,color:C.navy,margin:0}}>{rapport.mois} {rapport.annee}</h2>
+              <div style={{fontSize:13,color:C.gray600,marginTop:3}}>{session.nom} · {session.ville}</div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontSize:11,color:C.gray400}}>Généré le {new Date().toLocaleDateString("fr-FR")}</div>
+              <div style={{fontSize:13,fontWeight:600,color:C.navy,marginTop:4}}>FoyerSécure</div>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14}}>
+            {[[C.amber,rapport.total,"Fugues signalées"],[C.green,rapport.cloturees,"Retours confirmés"],[C.red,rapport.enCours,"En cours"],[C.blue,rapport.signalements,"Signalements police"]].map(([c,v,l])=>(
+              <div key={l} style={{background:C.gray100,borderRadius:10,padding:"14px 16px",borderLeft:`3px solid ${c}`}}>
+                <div style={{fontSize:26,fontWeight:800,color:c,lineHeight:1,marginBottom:3}}>{v}</div>
+                <div style={{fontSize:11.5,color:C.gray600}}>{l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {rapport.total===0?(
+          <div style={{...card,textAlign:"center",padding:"48px 24px",color:C.gray400}}>
+            <div style={{fontSize:40,marginBottom:12}}>📭</div>
+            <div style={{fontSize:15,fontWeight:600}}>Aucune fugue enregistrée pour {rapport.mois} {rapport.annee}</div>
+          </div>
+        ):(
+          <>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18,marginBottom:20}}>
+              <div style={card}>
+                <h3 style={{margin:"0 0 14px",fontSize:14,fontWeight:700,color:C.navy}}>Répartition par motif</h3>
+                {Object.entries(rapport.parMotif).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1]).map(([m,n])=>(
+                  <div key={m} style={{marginBottom:9}}>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:12.5,marginBottom:3}}><span>{m}</span><span style={{fontWeight:700}}>{n} ({Math.round((n/rapport.total)*100)}%)</span></div>
+                    <div style={{height:5,background:C.gray100,borderRadius:3}}><div style={{height:5,background:C.navy,borderRadius:3,width:`${(n/rapport.total)*100}%`}}/></div>
+                  </div>
+                ))}
+              </div>
+              <div style={card}>
+                <h3 style={{margin:"0 0 14px",fontSize:14,fontWeight:700,color:C.navy}}>Signalements par éducateur</h3>
+                {Object.entries(rapport.parEduc).sort((a,b)=>b[1]-a[1]).map(([nom,n])=>(
+                  <div key={nom} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.gray100}`}}>
+                    <div style={{display:"flex",alignItems:"center",gap:9}}>
+                      <div style={{width:30,height:30,borderRadius:"50%",background:"#E8ECF5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:C.navy}}>{nom.split(" ").map(x=>x[0]).join("")}</div>
+                      <span style={{fontSize:13.5,fontWeight:600}}>{nom}</span>
+                    </div>
+                    <span style={{fontWeight:800,fontSize:15,color:C.navy}}>{n}</span>
+                  </div>
+                ))}
+                <div style={{marginTop:12,background:C.gray100,borderRadius:8,padding:"10px 12px"}}>
+                  <div style={{fontSize:12,color:C.gray600}}>Durée moyenne par fugue</div>
+                  <div style={{fontSize:20,fontWeight:800,color:C.navy}}>{rapport.moyDuree}h</div>
+                </div>
+              </div>
+            </div>
+            <div style={card}>
+              <h3 style={{margin:"0 0 14px",fontSize:14,fontWeight:700,color:C.navy}}>Détail des fugues — {rapport.mois} {rapport.annee}</h3>
+              <table style={{width:"100%",borderCollapse:"collapse"}}>
+                <thead><tr>{["Jeune","Éducateur","Départ","Durée","Motif","Statut"].map(h=><th key={h} style={{textAlign:"left",padding:"9px 13px",fontSize:11,fontWeight:700,color:C.gray600,textTransform:"uppercase",borderBottom:`2px solid ${C.gray100}`}}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {rapport.fugues.map(f=>{
+                    const j=getJ(f.jeuneId);
+                    return(
+                      <tr key={f.id}>
+                        <td style={{padding:"10px 13px",fontSize:13,borderBottom:`1px solid ${C.gray100}`}}><strong>{j?.prenom} {j?.nom}</strong></td>
+                        <td style={{padding:"10px 13px",fontSize:12,borderBottom:`1px solid ${C.gray100}`,color:C.gray600}}>{f.educateurNom||"—"}</td>
+                        <td style={{padding:"10px 13px",fontSize:12,borderBottom:`1px solid ${C.gray100}`}}>{fDate(f.dateDepart)}</td>
+                        <td style={{padding:"10px 13px",fontSize:12,borderBottom:`1px solid ${C.gray100}`}}>{dureeH(f.dateDepart,f.dateRetour)||<span style={{color:C.red}}>En cours</span>}</td>
+                        <td style={{padding:"10px 13px",fontSize:12,borderBottom:`1px solid ${C.gray100}`}}>{f.motif}</td>
+                        <td style={{padding:"10px 13px",fontSize:12,borderBottom:`1px solid ${C.gray100}`}}><span style={SB(f.statut)}>{f.statut==="en_cours"?"En cours":"Clôturée"}</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // ── HISTORIQUE ÉDUCATEURS ───────────────────────────────────────────
+  function HistoriqueEduc(){
+    const [selEduc,setSelEduc]=useState("tous");
+    const fuguesFiltrees=selEduc==="tous"?fugues:fugues.filter(f=>f.educateurId===selEduc);
+    const stats=educateurs.map(e=>({
+      ...e,
+      total:fugues.filter(f=>f.educateurId===e.id).length,
+      enCours:fugues.filter(f=>f.educateurId===e.id&&f.statut==="en_cours").length,
+      derniere:fugues.filter(f=>f.educateurId===e.id).sort((a,b)=>new Date(b.dateDepart)-new Date(a.dateDepart))[0]?.dateDepart||null,
+    }));
+    return(
+      <div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:22}}>
+          {stats.map(e=>(
+            <div key={e.id} style={{...card,cursor:"pointer",border:selEduc===e.id?`2px solid ${C.navy}`:"2px solid transparent"}} onClick={()=>setSelEduc(selEduc===e.id?"tous":e.id)}>
+              <div style={{display:"flex",alignItems:"center",gap:11,marginBottom:10}}>
+                <div style={{width:40,height:40,borderRadius:"50%",background:"#E8ECF5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:C.navy,flexShrink:0}}>{e.nom.split(" ").map(x=>x[0]).join("")}</div>
+                <div><div style={{fontWeight:700,fontSize:14}}>{e.nom}</div><div style={{fontSize:11.5,color:C.gray600}}>{e.poste}</div></div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <div style={{background:C.gray100,borderRadius:7,padding:"8px 10px",textAlign:"center"}}>
+                  <div style={{fontSize:20,fontWeight:800,color:C.navy}}>{e.total}</div>
+                  <div style={{fontSize:10.5,color:C.gray600}}>Signalements</div>
+                </div>
+                <div style={{background:e.enCours>0?"#FEF3C7":C.gray100,borderRadius:7,padding:"8px 10px",textAlign:"center"}}>
+                  <div style={{fontSize:20,fontWeight:800,color:e.enCours>0?C.amber:C.gray400}}>{e.enCours}</div>
+                  <div style={{fontSize:10.5,color:C.gray600}}>En cours</div>
+                </div>
+              </div>
+              {e.derniere&&<div style={{fontSize:11.5,color:C.gray600,marginTop:8}}>Dernier signalement : {fDateShort(e.derniere)}</div>}
+            </div>
+          ))}
+        </div>
+        <div style={card}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+            <h3 style={{margin:0,fontSize:14,fontWeight:700,color:C.navy}}>
+              {selEduc==="tous"?"Toutes les fugues":"Fugues signalées par "+educateurs.find(e=>e.id===selEduc)?.nom}
+            </h3>
+            {selEduc!=="tous"&&<button style={B("ghost")} onClick={()=>setSelEduc("tous")}>Voir tout</button>}
+          </div>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <thead><tr>{["Jeune","Éducateur","Date départ","Durée","Motif","Statut"].map(h=><th key={h} style={{textAlign:"left",padding:"9px 13px",fontSize:11,fontWeight:700,color:C.gray600,textTransform:"uppercase",borderBottom:`2px solid ${C.gray100}`}}>{h}</th>)}</tr></thead>
+            <tbody>
+              {[...fuguesFiltrees].sort((a,b)=>new Date(b.dateDepart)-new Date(a.dateDepart)).map(f=>{
+                const j=getJ(f.jeuneId);
+                return(
+                  <tr key={f.id}>
+                    <td style={{padding:"10px 13px",fontSize:13,borderBottom:`1px solid ${C.gray100}`}}><strong>{j?.prenom} {j?.nom}</strong></td>
+                    <td style={{padding:"10px 13px",fontSize:12,borderBottom:`1px solid ${C.gray100}`,color:C.gray600}}>{f.educateurNom||"—"}</td>
+                    <td style={{padding:"10px 13px",fontSize:12,borderBottom:`1px solid ${C.gray100}`}}>{fDate(f.dateDepart)}</td>
+                    <td style={{padding:"10px 13px",fontSize:12,borderBottom:`1px solid ${C.gray100}`}}>{dureeH(f.dateDepart,f.dateRetour)||<span style={{color:C.red}}>En cours</span>}</td>
+                    <td style={{padding:"10px 13px",fontSize:12,borderBottom:`1px solid ${C.gray100}`}}>{f.motif}</td>
+                    <td style={{padding:"10px 13px",fontSize:12,borderBottom:`1px solid ${C.gray100}`}}><span style={SB(f.statut)}>{f.statut==="en_cours"?"En cours":"Clôturée"}</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  // ── JEUNES ──────────────────────────────────────────────────────────
+  function Jeunes(){
+    return(
       <div style={{display:"flex",gap:13,flexWrap:"wrap"}}>
         {jeunes.map(j=>{
           const fj=getFJ(j.id);const ec=fj.find(f=>f.statut==="en_cours");
-          return (
-            <div key={j.id} onClick={()=>{setSelJeune(j);setPage("profil");}} style={{...card,width:200,cursor:"pointer",border:ec?`2px solid ${red}`:"2px solid transparent",position:"relative"}}>
-              {ec&&<div style={{position:"absolute",top:11,right:11,width:9,height:9,borderRadius:"50%",background:red,boxShadow:`0 0 0 3px rgba(230,57,70,0.2)`}} />}
-              <div style={{width:42,height:42,borderRadius:"50%",background:"#E8ECF5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:700,marginBottom:11,color:navy}}>{j.prenom[0]}{j.nom[0]}</div>
+          return(
+            <div key={j.id} onClick={()=>{setSelJeune(j);setPage("profil");}} style={{...card,width:205,cursor:"pointer",border:ec?`2px solid ${C.red}`:"2px solid transparent",position:"relative"}}>
+              {ec&&<div style={{position:"absolute",top:11,right:11,width:9,height:9,borderRadius:"50%",background:C.red,boxShadow:`0 0 0 3px rgba(230,57,70,0.2)`}}/>}
+              <div style={{width:42,height:42,borderRadius:"50%",background:"#E8ECF5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:700,marginBottom:11,color:C.navy}}>{j.prenom[0]}{j.nom[0]}</div>
               <div style={{fontWeight:700,fontSize:13.5,marginBottom:2}}>{j.prenom} {j.nom}</div>
-              <div style={{fontSize:11.5,color:gray600,marginBottom:9}}>{j.age} ans · Ch. {j.chambre}</div>
-              <span style={{...sbadge(ec?"en_cours":"cloturee"),fontSize:10.5}}>{ec?"En fugue":"Présent"}</span>
+              <div style={{fontSize:11.5,color:C.gray600,marginBottom:9}}>{j.age} ans · Ch.{j.chambre}</div>
+              <div style={{display:"flex",gap:6}}>
+                <span style={{...SB(ec?"en_cours":"cloturee"),fontSize:10.5}}>{ec?"En fugue":"Présent"}</span>
+                <span style={{background:C.gray100,borderRadius:20,fontSize:10.5,fontWeight:600,padding:"2px 7px",color:C.gray700}}>{fj.length} fugue{fj.length>1?"s":""}</span>
+              </div>
             </div>
           );
         })}
-        <div onClick={()=>{setModal({type:"jeune"});setForm({dateEntree:nowISO().slice(0,10)});}} style={{...card,width:200,cursor:"pointer",border:`2px dashed ${gray200}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:gray400,minHeight:130}}>
+        <div onClick={()=>{setModal({type:"jeune"});setForm({dateEntree:nowISO().slice(0,10)});}} style={{...card,width:205,cursor:"pointer",border:`2px dashed ${C.gray200}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:C.gray400,minHeight:130}}>
           <div style={{fontSize:26,marginBottom:5}}>+</div><div style={{fontSize:12.5,fontWeight:600}}>Ajouter un jeune</div>
         </div>
       </div>
     );
   }
 
-  // PROFIL
-  function Profil() {
+  // ── PROFIL JEUNE ────────────────────────────────────────────────────
+  function Profil(){
     if(!selJeune)return null;
     const j=selJeune;const fj=getFJ(j.id);const ec=fj.find(f=>f.statut==="en_cours");
-    return (
+    return(
       <div>
-        <button onClick={()=>setPage("jeunes")} style={{...btn("ghost"),marginBottom:18,fontSize:12.5}}>← Retour</button>
+        <button onClick={()=>setPage("jeunes")} style={{...B("ghost"),marginBottom:18,fontSize:12.5}}>← Retour</button>
         <div style={{display:"flex",gap:18,alignItems:"flex-start"}}>
-          <div style={{...card,minWidth:200}}>
-            <div style={{width:48,height:48,borderRadius:"50%",background:"#E8ECF5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,fontWeight:700,marginBottom:13,color:navy}}>{j.prenom[0]}{j.nom[0]}</div>
+          <div style={{...card,minWidth:205}}>
+            <div style={{width:48,height:48,borderRadius:"50%",background:"#E8ECF5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,fontWeight:700,marginBottom:13,color:C.navy}}>{j.prenom[0]}{j.nom[0]}</div>
             <div style={{fontWeight:800,fontSize:16}}>{j.prenom} {j.nom}</div>
-            <div style={{fontSize:12.5,color:gray600,marginBottom:11}}>{j.age} ans · Ch. {j.chambre}</div>
-            <div style={{fontSize:12,marginBottom:6}}><strong>Fugues :</strong> {fj.length}</div>
-            <span style={sbadge(ec?"en_cours":"cloturee")}>{ec?"🔴 En fugue":"🟢 Présent"}</span>
+            <div style={{fontSize:12.5,color:C.gray600,marginBottom:11}}>{j.age} ans</div>
+            {[["Chambre",j.chambre],["Entrée",fDateShort(j.dateEntree)],["Fugues",fj.length]].map(([k,v])=>(<div key={k} style={{fontSize:12,marginBottom:5}}><strong>{k} :</strong> {v}</div>))}
+            <div style={{marginTop:11}}><span style={SB(ec?"en_cours":"cloturee")}>{ec?"🔴 En fugue":"🟢 Présent"}</span></div>
+            {ec&&<button onClick={()=>setNotifF(ec)} style={{...B("notif"),width:"100%",justifyContent:"center",marginTop:9}}>📣 Notifier</button>}
           </div>
           <div style={{flex:1,...card}}>
-            <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:700}}>Historique</h3>
-            {fj.length===0?<p style={{color:gray400}}>Aucune fugue.</p>:fj.map((f,i)=>(
-              <div key={f.id} style={{background:bg,borderRadius:9,padding:"12px 14px",marginBottom:12}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                  <span style={{fontWeight:700,fontSize:13}}>Fugue du {fDate(f.dateDepart).split(" ")[0]}</span>
-                  <span style={sbadge(f.statut)}>{f.statut==="en_cours"?"En cours":"Clôturée"}</span>
-                </div>
-                <div style={{fontSize:12,color:gray700,lineHeight:1.8}}>
-                  📍 {f.lieu} · 🔎 {f.motif}<br/>
-                  ⏱ {dureeH(f.dateDepart,f.dateRetour)||<span style={{color:red}}>En cours</span>}
-                  {f.signalementPolicier&&" · 🚔 Signalé"}
-                </div>
-                <div style={{display:"flex",gap:7,marginTop:9}}>
-                  <button onClick={()=>setNotifF(f)} style={btn("notif")}>📣</button>
-                  {f.statut==="en_cours"&&<button onClick={()=>{setModal({type:"retour",fid:f.id});setForm({dateRetour:nowISO(),notes:f.notes});}} style={btn("success")}>✓ Retour</button>}
+            <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:700}}>Historique des fugues</h3>
+            {fj.length===0?<p style={{color:C.gray400,fontSize:13}}>Aucune fugue enregistrée.</p>:fj.map((f,i)=>(
+              <div key={f.id} style={{position:"relative",paddingLeft:26,paddingBottom:20}}>
+                <div style={{position:"absolute",left:-6,top:4,width:11,height:11,borderRadius:"50%",background:f.statut==="en_cours"?C.red:C.green,border:"2px solid #fff",boxShadow:`0 0 0 2px ${f.statut==="en_cours"?C.red:C.green}`}}/>
+                {i<fj.length-1&&<div style={{position:"absolute",left:-1,top:15,bottom:0,width:2,background:C.gray200}}/>}
+                <div style={{background:C.bg,borderRadius:9,padding:"12px 14px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+                    <span style={{fontWeight:700,fontSize:13}}>Fugue du {fDateShort(f.dateDepart)}</span>
+                    <span style={SB(f.statut)}>{f.statut==="en_cours"?"En cours":"Clôturée"}</span>
+                  </div>
+                  <div style={{fontSize:12,color:C.gray700,lineHeight:1.8}}>
+                    📍 {f.lieu} · 🔎 {f.motif}<br/>
+                    ⏱ {dureeH(f.dateDepart,f.dateRetour)||<span style={{color:C.red}}>En cours</span>}
+                    {f.signalementPolicier&&" · 🚔 Signalé"}
+                    {f.educateurNom&&<><br/>👤 Signalé par <strong>{f.educateurNom}</strong></>}
+                  </div>
+                  {f.notes&&<div style={{fontSize:12,color:C.gray600,fontStyle:"italic",marginTop:6}}>"{f.notes}"</div>}
+                  <div style={{display:"flex",gap:7,marginTop:9}}>
+                    <button onClick={()=>setNotifF(f)} style={B("notif")}>📣</button>
+                    {f.statut==="en_cours"&&<button onClick={()=>{setModal({type:"retour",fid:f.id});setForm({dateRetour:nowISO(),notes:f.notes});}} style={B("success")}>✓ Retour</button>}
+                  </div>
                 </div>
               </div>
             ))}
@@ -464,47 +935,58 @@ function App() {
     );
   }
 
-  // STATS
-  function Stats() {
-    const mL=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
+  // ── STATS ────────────────────────────────────────────────────────────
+  function Stats(){
     const pM=Array(12).fill(0);fugues.forEach(f=>pM[new Date(f.dateDepart).getMonth()]++);
     const mx=Math.max(...pM,1);
     const dur=fugues.filter(f=>f.dateRetour).map(f=>(new Date(f.dateRetour)-new Date(f.dateDepart))/3600000);
     const moy=dur.length?(dur.reduce((a,b)=>a+b,0)/dur.length).toFixed(1):0;
-    return (
+    return(
       <div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:22}}>
-          {[[navy,fugues.length,"Total"],[amber,`${moy}h`,"Durée moy."],[red,fugues.filter(f=>f.signalementPolicier).length,"Signalements"]].map(([c,v,l])=>(
-            <div key={l} style={{background:white,borderRadius:12,padding:"18px 20px",boxShadow:"0 1px 4px rgba(15,31,61,0.07)",borderLeft:`4px solid ${c}`}}>
+          {[[C.navy,fugues.length,"Total fugues"],[C.amber,`${moy}h`,"Durée moyenne"],[C.red,fugues.filter(f=>f.signalementPolicier).length,"Signalements police"]].map(([c,v,l])=>(
+            <div key={l} style={{background:C.white,borderRadius:12,padding:"18px 20px",boxShadow:"0 1px 4px rgba(15,31,61,0.07)",borderLeft:`4px solid ${c}`}}>
               <div style={{fontSize:30,fontWeight:800,color:c,lineHeight:1,marginBottom:4}}>{v}</div>
-              <div style={{fontSize:11.5,color:gray600}}>{l}</div>
+              <div style={{fontSize:11.5,color:C.gray600}}>{l}</div>
             </div>
           ))}
         </div>
-        <div style={{...card,marginBottom:20}}>
-          <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:700}}>Fugues par mois</h3>
-          <div style={{display:"flex",alignItems:"flex-end",gap:4,height:90}}>
-            {pM.map((n,i)=>(
-              <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
-                <div style={{width:"100%",background:n>0?navy:gray200,borderRadius:"3px 3px 0 0",height:`${(n/mx)*75}px`,minHeight:n>0?5:2}} />
-                <span style={{fontSize:8.5,color:gray400}}>{mL[i]}</span>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18,marginBottom:22}}>
+          <div style={card}>
+            <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:700}}>Fugues par mois</h3>
+            <div style={{display:"flex",alignItems:"flex-end",gap:4,height:90}}>
+              {pM.map((n,i)=>(
+                <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                  <div style={{width:"100%",background:n>0?C.navy:C.gray200,borderRadius:"3px 3px 0 0",height:`${(n/mx)*75}px`,minHeight:n>0?5:2}}/>
+                  <span style={{fontSize:8.5,color:C.gray400}}>{MOIS_SHORT[i]}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={card}>
+            <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:700}}>Par motif</h3>
+            {MOTIFS.map(m=>{const n=fugues.filter(f=>f.motif===m).length;if(!n)return null;return(
+              <div key={m} style={{marginBottom:9}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:12.5,marginBottom:3}}><span>{m}</span><span style={{fontWeight:700}}>{n} ({Math.round((n/fugues.length)*100)}%)</span></div>
+                <div style={{height:5,background:C.gray100,borderRadius:3}}><div style={{height:5,background:C.navy,borderRadius:3,width:`${(n/fugues.length)*100}%`}}/></div>
               </div>
-            ))}
+            );})}
           </div>
         </div>
         <div style={card}>
           <h3 style={{margin:"0 0 14px",fontSize:14,fontWeight:700}}>Par jeune</h3>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
-            <thead><tr>{["Jeune","Fugues","Durée moy.","Signalements"].map(h=><th key={h} style={{textAlign:"left",padding:"9px 13px",fontSize:11,fontWeight:700,color:gray600,textTransform:"uppercase",borderBottom:`2px solid ${gray100}`}}>{h}</th>)}</tr></thead>
+            <thead><tr>{["Jeune","Fugues","Durée moy.","Signalements","Dernier signalement"].map(h=><th key={h} style={{textAlign:"left",padding:"9px 13px",fontSize:11,fontWeight:700,color:C.gray600,textTransform:"uppercase",borderBottom:`2px solid ${C.gray100}`}}>{h}</th>)}</tr></thead>
             <tbody>{jeunes.map(j=>{
               const fj=getFJ(j.id);
               const d=fj.filter(f=>f.dateRetour).map(f=>(new Date(f.dateRetour)-new Date(f.dateDepart))/3600000);
               const mo=d.length?(d.reduce((a,b)=>a+b,0)/d.length).toFixed(1):"—";
               return(<tr key={j.id}>
-                <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${gray100}`}}><strong>{j.prenom} {j.nom}</strong></td>
-                <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${gray100}`}}><span style={{fontWeight:700,color:fj.length>2?red:gray900}}>{fj.length}</span></td>
-                <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${gray100}`}}>{mo!=="—"?`${mo}h`:"—"}</td>
-                <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${gray100}`}}>{fj.filter(f=>f.signalementPolicier).length}</td>
+                <td style={{padding:"10px 13px",fontSize:13,borderBottom:`1px solid ${C.gray100}`}}><strong>{j.prenom} {j.nom}</strong></td>
+                <td style={{padding:"10px 13px",fontSize:13,borderBottom:`1px solid ${C.gray100}`}}><span style={{fontWeight:700,color:fj.length>2?C.red:C.gray900}}>{fj.length}</span></td>
+                <td style={{padding:"10px 13px",fontSize:12,borderBottom:`1px solid ${C.gray100}`}}>{mo!=="—"?`${mo}h`:"—"}</td>
+                <td style={{padding:"10px 13px",fontSize:12,borderBottom:`1px solid ${C.gray100}`}}>{fj.filter(f=>f.signalementPolicier).length}</td>
+                <td style={{padding:"10px 13px",fontSize:12,borderBottom:`1px solid ${C.gray100}`}}>{fj.length>0?fDateShort(fj[0].dateDepart):"—"}</td>
               </tr>);
             })}</tbody>
           </table>
@@ -513,22 +995,25 @@ function App() {
     );
   }
 
-  // NOTIFS
-  function Notifs() {
+  // ── NOTIFICATIONS ────────────────────────────────────────────────────
+  function Notifs(){
     const all=fugues.flatMap(f=>(f.notifications||[]).map(n=>({...n,fugue:f,jeune:getJ(f.jeuneId)})));
-    return (
+    return(
       <div style={card}>
-        <h3 style={{margin:"0 0 14px",fontSize:14,fontWeight:700,color:navy}}>Journal des notifications</h3>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <h3 style={{margin:0,fontSize:14,fontWeight:700,color:C.navy}}>Journal des notifications</h3>
+          <span style={{fontSize:12.5,color:C.gray600}}>{all.length} au total</span>
+        </div>
         {all.length===0
-          ?<div style={{textAlign:"center",padding:"36px 0",color:gray400}}><div style={{fontSize:38,marginBottom:11}}>📭</div><div>Aucune notification.</div></div>
+          ?<div style={{textAlign:"center",padding:"36px 0",color:C.gray400}}><div style={{fontSize:38,marginBottom:11}}>📭</div><div>Aucune notification envoyée.</div></div>
           :<table style={{width:"100%",borderCollapse:"collapse"}}>
-            <thead><tr>{["Jeune","Destinataire","Type","Heure","Statut"].map(h=><th key={h} style={{textAlign:"left",padding:"9px 13px",fontSize:11,fontWeight:700,color:gray600,textTransform:"uppercase",borderBottom:`2px solid ${gray100}`}}>{h}</th>)}</tr></thead>
+            <thead><tr>{["Jeune","Destinataire","Type","Heure","Statut"].map(h=><th key={h} style={{textAlign:"left",padding:"9px 13px",fontSize:11,fontWeight:700,color:C.gray600,textTransform:"uppercase",borderBottom:`2px solid ${C.gray100}`}}>{h}</th>)}</tr></thead>
             <tbody>{all.map((n,i)=>(<tr key={i}>
-              <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${gray100}`}}><strong>{n.jeune?.prenom} {n.jeune?.nom}</strong></td>
-              <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${gray100}`}}>{n.dest}</td>
-              <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${gray100}`}}>{n.type==="SMS"?"📱 SMS":"✉️ Email"}</td>
-              <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${gray100}`}}>{n.heure}</td>
-              <td style={{padding:"11px 13px",fontSize:13,borderBottom:`1px solid ${gray100}`}}><span style={sbadge(n.statut)}>{n.statut}</span></td>
+              <td style={{padding:"10px 13px",fontSize:13,borderBottom:`1px solid ${C.gray100}`}}><strong>{n.jeune?.prenom} {n.jeune?.nom}</strong></td>
+              <td style={{padding:"10px 13px",fontSize:13,borderBottom:`1px solid ${C.gray100}`}}>{n.dest}</td>
+              <td style={{padding:"10px 13px",fontSize:13,borderBottom:`1px solid ${C.gray100}`}}>{n.type==="SMS"?"📱 SMS":"✉️ Email"}</td>
+              <td style={{padding:"10px 13px",fontSize:13,borderBottom:`1px solid ${C.gray100}`}}>{n.heure}</td>
+              <td style={{padding:"10px 13px",fontSize:13,borderBottom:`1px solid ${C.gray100}`}}><span style={SB(n.statut)}>{n.statut}</span></td>
             </tr>))}</tbody>
           </table>
         }
@@ -536,118 +1021,55 @@ function App() {
     );
   }
 
-  // NOTIF PANEL
-  function NotifPanel({fugue,jeune,onClose}) {
-    const [sent,setSent]=useState(fugue.notifications||[]);
-    const [sending,setSending]=useState(false);
-    const dests=[
-      {k:"ase",l:"ASE",i:"🏛",info:contacts.ase},
-      {k:"parents",l:"Parents",i:"👨‍👩‍👦",info:{nom:`Famille ${jeune?.nom}`,email:jeune?.parentEmail,tel:jeune?.parentTel}},
-      {k:"astreinte",l:"Astreinte",i:"🌙",info:contacts.astreinte},
-      {k:"police",l:"Police",i:"🚔",info:contacts.police},
-    ];
-    function sendAll(){
-      setSending(true);
-      setTimeout(()=>{
-        const h=new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
-        setSent(dests.flatMap(d=>[{dest:d.l,type:"SMS",heure:h,statut:"envoyé"},{dest:d.l,type:"Email",heure:h,statut:"envoyé"}]));
-        setSending(false);
-      },1400);
-    }
-    function sendOne(dest,type){
-      setSending(true);
-      setTimeout(()=>{
-        const h=new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
-        setSent(p=>[...p,{dest,type,heure:h,statut:"envoyé"}]);
-        setSending(false);
-      },800);
-    }
-    const isSent=(dest,type)=>sent.some(n=>n.dest===dest&&n.type===type);
-    return (
-      <div style={overlay} onClick={onClose}>
-        <div style={{...mbox,maxWidth:540}} onClick={e=>e.stopPropagation()}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
-            <h2 style={{fontSize:17,fontWeight:700,color:navy}}>📣 Notifications — {jeune?.prenom} {jeune?.nom}</h2>
-            <button onClick={onClose} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:gray400}}>✕</button>
-          </div>
-          <p style={{fontSize:12.5,color:gray600,marginBottom:16}}>Départ {fDate(fugue.dateDepart)} · {fugue.lieu}</p>
-          {sent.length===0
-            ?<div style={{background:"#FFF7ED",border:"1px solid #FED7AA",borderRadius:9,padding:"11px 14px",marginBottom:14,fontSize:13,color:"#C2410C"}}>⚠️ Aucune notification envoyée.</div>
-            :<div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:9,padding:"9px 13px",marginBottom:14,fontSize:12.5,color:"#059669",fontWeight:600}}>✅ {sent.length} notification{sent.length>1?"s":""} envoyée{sent.length>1?"s":""}</div>
-          }
-          <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
-            <button style={btn("danger")} onClick={sendAll} disabled={sending}>{sending?"Envoi…":"📣 Alerter tous (SMS + Email)"}</button>
-          </div>
-          {dests.map(d=>(
-            <div key={d.k} style={{background:bg,borderRadius:10,padding:"12px 14px",border:`1px solid ${gray200}`,marginBottom:9}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-                <div style={{display:"flex",alignItems:"center",gap:9}}>
-                  <span style={{fontSize:18}}>{d.i}</span>
-                  <div><div style={{fontWeight:700,fontSize:13.5}}>{d.l}</div><div style={{fontSize:11.5,color:gray600}}>{d.info?.nom}</div></div>
-                </div>
-                <div style={{display:"flex",gap:5}}>
-                  {["SMS","Email"].map(type=>isSent(d.l,type)
-                    ?<span key={type} style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,fontWeight:600,padding:"2px 7px",borderRadius:10,background:"#D1FAE5",color:"#059669",marginRight:4}}>✓ {type}</span>
-                    :<button key={type} style={btn("notif")} onClick={()=>sendOne(d.l,type)} disabled={sending}>{type==="SMS"?"📱":"✉️"} {type}</button>
-                  )}
-                </div>
-              </div>
-              <div style={{fontSize:11.5,color:gray600}}>📱 {d.info?.tel} · ✉️ {d.info?.email}</div>
-            </div>
-          ))}
-          <div style={{display:"flex",justifyContent:"flex-end",marginTop:16}}>
-            <button style={btn("ghost")} onClick={onClose}>Fermer</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const titles={dashboard:"Tableau de bord",signaler:"Signaler une fugue",jeunes:"Suivi par jeune",profil:selJeune?`${selJeune.prenom} ${selJeune.nom}`:"",stats:"Statistiques",rapport:"Rapport mensuel",educateurs:"Historique éducateurs",notifs:"Notifications"};
 
-  const titles={dashboard:"Tableau de bord",signaler:"Signaler une fugue",jeunes:"Suivi par jeune",profil:selJeune?`${selJeune.prenom} ${selJeune.nom}`:"",stats:"Statistiques",notifs:"Notifications"};
-
-  return (
-    <div style={{fontFamily:"-apple-system,system-ui,sans-serif",background:bg,minHeight:"100vh",color:gray900}}>
-      {toast&&<div style={{position:"fixed",bottom:22,right:22,background:toast.color,color:white,borderRadius:10,padding:"11px 18px",fontSize:13.5,fontWeight:600,zIndex:9999,boxShadow:"0 4px 16px rgba(0,0,0,0.2)"}}>{toast.msg}</div>}
-
+  return(
+    <div style={{fontFamily:"-apple-system,system-ui,sans-serif",background:C.bg,minHeight:"100vh",color:C.gray900}}>
+      {toast&&<div style={{position:"fixed",bottom:22,right:22,background:toast.color,color:C.white,borderRadius:10,padding:"11px 18px",fontSize:13.5,fontWeight:600,zIndex:9999,boxShadow:"0 4px 16px rgba(0,0,0,0.2)"}}>{toast.msg}</div>}
       {/* Sidebar */}
-      <div style={{position:"fixed",left:0,top:0,bottom:0,width:220,background:navy,display:"flex",flexDirection:"column",zIndex:100,overflowY:"auto"}}>
+      <div className="no-print" style={{position:"fixed",left:0,top:0,bottom:0,width:224,background:C.navy,display:"flex",flexDirection:"column",zIndex:100,overflowY:"auto"}}>
         <div style={{padding:"20px 18px 14px",borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
           <div style={{fontSize:10,color:"rgba(255,255,255,0.35)",fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",marginBottom:5}}>FoyerSécure</div>
-          <div style={{color:white,fontSize:13.5,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{session.nom}</div>
+          <div style={{color:C.white,fontSize:13.5,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{session.nom}</div>
           <div style={{color:"rgba(255,255,255,0.4)",fontSize:11,marginTop:3}}>📍 {session.ville}</div>
         </div>
         <nav style={{padding:"12px 10px",flex:1}}>
-          <div style={{color:"rgba(255,255,255,0.28)",fontSize:9.5,fontWeight:700,letterSpacing:1.2,padding:"0 8px",marginBottom:4,marginTop:12,textTransform:"uppercase"}}>Menu</div>
+          <div style={{color:"rgba(255,255,255,0.28)",fontSize:9.5,fontWeight:700,letterSpacing:1.2,padding:"0 8px",marginBottom:4,marginTop:4,textTransform:"uppercase"}}>Menu</div>
           {navItems.map(item=>(
-            <button key={item.key} style={{display:"flex",alignItems:"center",gap:9,padding:"9px 11px",borderRadius:8,cursor:"pointer",color:page===item.key||(page==="profil"&&item.key==="jeunes")?white:"rgba(255,255,255,0.55)",background:page===item.key||(page==="profil"&&item.key==="jeunes")?"rgba(255,255,255,0.1)":"transparent",fontSize:13,fontWeight:page===item.key?600:400,marginBottom:2,border:"none",width:"100%",textAlign:"left"}} onClick={()=>setPage(item.key)}>
+            <button key={item.key} style={{display:"flex",alignItems:"center",gap:9,padding:"9px 11px",borderRadius:8,cursor:"pointer",color:(page===item.key||(page==="profil"&&item.key==="jeunes"))?C.white:"rgba(255,255,255,0.55)",background:(page===item.key||(page==="profil"&&item.key==="jeunes"))?"rgba(255,255,255,0.1)":"transparent",fontSize:13,fontWeight:(page===item.key)?600:400,marginBottom:2,border:"none",width:"100%",textAlign:"left"}} onClick={()=>setPage(item.key)}>
               <span>{item.icon}</span><span style={{flex:1}}>{item.label}</span>
-              {item.badge&&<span style={{background:red,color:white,borderRadius:10,fontSize:10.5,fontWeight:700,padding:"1px 6px"}}>{item.badge}</span>}
+              {item.badge&&<span style={{background:C.red,color:C.white,borderRadius:10,fontSize:10.5,fontWeight:700,padding:"1px 6px"}}>{item.badge}</span>}
             </button>
           ))}
           <div style={{color:"rgba(255,255,255,0.28)",fontSize:9.5,fontWeight:700,letterSpacing:1.2,padding:"0 8px",marginBottom:4,marginTop:12,textTransform:"uppercase"}}>Compte</div>
-          <button style={{display:"flex",alignItems:"center",gap:9,padding:"9px 11px",borderRadius:8,cursor:"pointer",color:"rgba(255,255,255,0.55)",background:"transparent",fontSize:13,fontWeight:400,marginBottom:2,border:"none",width:"100%",textAlign:"left"}} onClick={()=>setAppPage("abo")}>
-            <span>💳</span><span>Abonnement</span>
-          </button>
+          <button style={{display:"flex",alignItems:"center",gap:9,padding:"9px 11px",borderRadius:8,cursor:"pointer",color:"rgba(255,255,255,0.55)",background:"transparent",fontSize:13,fontWeight:400,marginBottom:2,border:"none",width:"100%",textAlign:"left"}} onClick={()=>setAppPage("abo")}><span>💳</span><span>Abonnement</span></button>
         </nav>
         <div style={{padding:"13px 11px",borderTop:"1px solid rgba(255,255,255,0.08)"}}>
-          <button style={btn("logout")} onClick={()=>{setSession(null);setAppPage("login");}}>⬅ Déconnexion</button>
+          <div style={{display:"flex",alignItems:"center",gap:8,padding:"0 3px",marginBottom:9}}>
+            <div style={{width:30,height:30,borderRadius:"50%",background:"rgba(255,255,255,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:C.white,flexShrink:0}}>{session.nom[0]}</div>
+            <div style={{overflow:"hidden"}}>
+              <div style={{fontSize:11.5,color:C.white,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{session.nom}</div>
+              <span style={{background:"#EDE9FE",color:C.purple,borderRadius:6,fontSize:10,fontWeight:700,padding:"2px 6px"}}>{session.role}</span>
+            </div>
+          </div>
+          <button style={B("logout")} onClick={()=>{setSession(null);setAppPage("login");}}>⬅ Déconnexion</button>
         </div>
       </div>
-
       {/* Main */}
-      <main style={{marginLeft:220,padding:"24px 28px",minHeight:"100vh"}}>
+      <main style={{marginLeft:224,padding:"24px 28px",minHeight:"100vh"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:22}}>
-          <h1 style={{fontSize:20,fontWeight:700,color:navy,margin:0}}>{titles[page]}</h1>
-          {page==="jeunes"&&<button onClick={()=>{setModal({type:"jeune"});setForm({dateEntree:nowISO().slice(0,10)});}} style={btn("primary")}>+ Ajouter</button>}
+          <h1 style={{fontSize:20,fontWeight:700,color:C.navy,margin:0}}>{titles[page]}</h1>
+          {page==="jeunes"&&<button onClick={()=>{setModal({type:"jeune"});setForm({dateEntree:nowISO().slice(0,10)});}} style={B("primary")}>+ Ajouter un jeune</button>}
         </div>
-        {page==="dashboard"&&<Dashboard />}
-        {page==="signaler"&&<Signaler />}
-        {page==="jeunes"&&<Jeunes />}
-        {page==="profil"&&<Profil />}
-        {page==="stats"&&<Stats />}
-        {page==="notifs"&&<Notifs />}
+        {page==="dashboard"&&<Dashboard/>}
+        {page==="signaler"&&<Signaler/>}
+        {page==="jeunes"&&<Jeunes/>}
+        {page==="profil"&&<Profil/>}
+        {page==="stats"&&<Stats/>}
+        {page==="rapport"&&<RapportMensuel/>}
+        {page==="educateurs"&&<HistoriqueEduc/>}
+        {page==="notifs"&&<Notifs/>}
       </main>
-
       {/* Modals */}
       {modal&&(
         <div style={overlay} onClick={closeM}>
@@ -655,42 +1077,41 @@ function App() {
             {modal.type==="retour"&&(()=>{
               const f=fugues.find(f=>f.id===modal.fid);const j=getJ(f?.jeuneId);
               return(<>
-                <h2 style={{fontSize:17,fontWeight:700,marginBottom:18,color:navy}}>✅ Enregistrer le retour</h2>
-                <p style={{color:gray600,fontSize:13,marginBottom:18}}>{j?.prenom} {j?.nom} — parti le {fDate(f?.dateDepart)}</p>
-                <div style={fg}><label style={label}>Date et heure *</label><input style={input} type="datetime-local" value={form.dateRetour} onChange={e=>setForm({...form,dateRetour:e.target.value})} /></div>
-                <div style={fg}><label style={label}>Notes</label><textarea style={{...input,resize:"vertical",minHeight:65}} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} /></div>
+                <h2 style={{fontSize:17,fontWeight:700,marginBottom:18,color:C.navy}}>✅ Enregistrer le retour</h2>
+                <p style={{color:C.gray600,fontSize:13,marginBottom:18}}>{j?.prenom} {j?.nom} — parti le {fDate(f?.dateDepart)}</p>
+                <div style={fg}><label style={lbl}>Date et heure de retour *</label><input style={inp} type="datetime-local" value={form.dateRetour} onChange={e=>setForm({...form,dateRetour:e.target.value})}/></div>
+                <div style={fg}><label style={lbl}>Notes</label><textarea style={{...inp,resize:"vertical",minHeight:65}} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Conditions de retour, état du jeune…"/></div>
                 <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
-                  <button style={btn("ghost")} onClick={closeM}>Annuler</button>
-                  <button style={btn("success")} onClick={()=>{setFugues(p=>p.map(f=>f.id===modal.fid?{...f,dateRetour:form.dateRetour,statut:"cloturee",notes:form.notes}:f));closeM();showToast("Retour enregistré");}}>Confirmer</button>
+                  <button style={B("ghost")} onClick={closeM}>Annuler</button>
+                  <button style={B("success")} onClick={()=>{setFugues(p=>p.map(f=>f.id===modal.fid?{...f,dateRetour:form.dateRetour,statut:"cloturee",notes:form.notes}:f));closeM();showToast("Retour enregistré ✅");}}>Confirmer</button>
                 </div>
               </>);
             })()}
             {modal.type==="jeune"&&(<>
-              <h2 style={{fontSize:17,fontWeight:700,marginBottom:18,color:navy}}>👤 Ajouter un jeune</h2>
+              <h2 style={{fontSize:17,fontWeight:700,marginBottom:18,color:C.navy}}>👤 Ajouter un jeune</h2>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                <div style={fg}><label style={label}>Prénom *</label><input style={input} value={form.prenom||""} onChange={e=>setForm({...form,prenom:e.target.value})} /></div>
-                <div style={fg}><label style={label}>Nom *</label><input style={input} value={form.nom||""} onChange={e=>setForm({...form,nom:e.target.value})} /></div>
-                <div style={fg}><label style={label}>Âge</label><input style={input} type="number" value={form.age||""} onChange={e=>setForm({...form,age:e.target.value})} /></div>
-                <div style={fg}><label style={label}>Chambre</label><input style={input} value={form.chambre||""} onChange={e=>setForm({...form,chambre:e.target.value})} /></div>
-                <div style={fg}><label style={label}>Email parents</label><input style={input} type="email" value={form.parentEmail||""} onChange={e=>setForm({...form,parentEmail:e.target.value})} /></div>
-                <div style={fg}><label style={label}>Tél. parents</label><input style={input} value={form.parentTel||""} onChange={e=>setForm({...form,parentTel:e.target.value})} /></div>
+                <div style={fg}><label style={lbl}>Prénom *</label><input style={inp} value={form.prenom||""} onChange={e=>setForm({...form,prenom:e.target.value})}/></div>
+                <div style={fg}><label style={lbl}>Nom *</label><input style={inp} value={form.nom||""} onChange={e=>setForm({...form,nom:e.target.value})}/></div>
+                <div style={fg}><label style={lbl}>Âge</label><input style={inp} type="number" value={form.age||""} onChange={e=>setForm({...form,age:e.target.value})}/></div>
+                <div style={fg}><label style={lbl}>Chambre</label><input style={inp} value={form.chambre||""} onChange={e=>setForm({...form,chambre:e.target.value})} placeholder="ex: 12A"/></div>
+                <div style={fg}><label style={lbl}>Email parents</label><input style={inp} type="email" value={form.parentEmail||""} onChange={e=>setForm({...form,parentEmail:e.target.value})}/></div>
+                <div style={fg}><label style={lbl}>Tél. parents</label><input style={inp} value={form.parentTel||""} onChange={e=>setForm({...form,parentTel:e.target.value})}/></div>
               </div>
-              <div style={fg}><label style={label}>Date d'entrée</label><input style={input} type="date" value={form.dateEntree||""} onChange={e=>setForm({...form,dateEntree:e.target.value})} /></div>
+              <div style={fg}><label style={lbl}>Date d'entrée</label><input style={inp} type="date" value={form.dateEntree||""} onChange={e=>setForm({...form,dateEntree:e.target.value})}/></div>
               <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
-                <button style={btn("ghost")} onClick={closeM}>Annuler</button>
-                <button style={btn("primary")} onClick={()=>{if(!form.nom||!form.prenom)return;setJeunes(p=>[...p,{id:Date.now(),nom:form.nom,prenom:form.prenom,age:parseInt(form.age)||0,chambre:form.chambre||"",dateEntree:form.dateEntree||nowISO().slice(0,10),parentEmail:form.parentEmail||"",parentTel:form.parentTel||""}]);closeM();showToast(`${form.prenom} ${form.nom} ajouté`);}}>Ajouter</button>
+                <button style={B("ghost")} onClick={closeM}>Annuler</button>
+                <button style={B("primary")} onClick={()=>{if(!form.nom||!form.prenom)return;setJeunes(p=>[...p,{id:Date.now(),nom:form.nom,prenom:form.prenom,age:parseInt(form.age)||0,chambre:form.chambre||"",dateEntree:form.dateEntree||nowISO().slice(0,10),parentEmail:form.parentEmail||"",parentTel:form.parentTel||""}]);closeM();showToast(`${form.prenom} ${form.nom} ajouté(e) ✅`);}}>Ajouter</button>
               </div>
             </>)}
           </div>
         </div>
       )}
-
-      {notifF&&<NotifPanel fugue={notifF} jeune={getJ(notifF.jeuneId)} onClose={()=>setNotifF(null)} />}
+      {notifF&&<NotifPanel fugue={notifF} jeune={getJ(notifF.jeuneId)} contacts={contacts} onClose={()=>setNotifF(null)}/>}
     </div>
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>
